@@ -20,6 +20,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import GaussianNB
 from sklearn.tree import plot_tree
 import matplotlib.pyplot as plt
+from sklearn.metrics import accuracy_score
 
 # import Data.data_provider as dp
 # dataset = "adult"
@@ -98,17 +99,15 @@ RF_rankings = tree_rankings.sum(axis=0)
 ranking_sum = RF_rankings.sum(axis=1)
 LR_RF_probs = RF_rankings / ranking_sum[:, np.newaxis]
 
+
+# compare RF and LR_RF acc
 RF_probs = model.predict_proba(x_test)
+RF_pred = np.argmax(RF_probs, axis=1) # which is equal to the sklearn model.predict(x_test)
 
-print(RF_probs[5])
-print(LR_RF_probs[5])
+LR_RF_pred = np.argmax(LR_RF_probs, axis=1)
 
-print(np.argmax(RF_probs[5]))
-print(np.argmax(LR_RF_probs[5]))
-print("--------------------------------")
-print(y_test[5])
-
-
+print(accuracy_score(y_test, RF_pred))
+print(accuracy_score(y_test, LR_RF_pred))
 
 
 
