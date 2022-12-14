@@ -76,7 +76,7 @@ for index, (y_r, y_a) in enumerate(zip(target_rank, y_argsort)):
 x_train, x_test, y_train, y_test = train_test_split(features, target, test_size=0.5, random_state=0)
 _, _, y_train_rank, y_test_rank = train_test_split(features, target_rank, test_size=0.5, random_state=0)
 
-model = RandomForestClassifier(max_depth=2, n_estimators=3, random_state=0)
+model = RandomForestClassifier(max_depth=100, n_estimators=100, random_state=0)
 model.fit(x_train, y_train)
 
 # get neighbor rankings
@@ -88,8 +88,6 @@ for i, estimator in enumerate(model.estimators_):
 tree_rankings = []
 for i, (estimator, borda) in enumerate(zip(model.estimators_, borda_dict_list)):
     tree_rankings.append(get_ranking(estimator,x_test,borda))
-
-    print(estimator.tree_)
 tree_rankings = np.array(tree_rankings)
 
 # second level aggregation
@@ -106,30 +104,5 @@ RF_pred = np.argmax(RF_probs, axis=1) # which is equal to the sklearn model.pred
 
 LR_RF_pred = np.argmax(LR_RF_probs, axis=1)
 
-print(accuracy_score(y_test, RF_pred))
-print(accuracy_score(y_test, LR_RF_pred))
-
-
-
-
-
-
-
-
-
-# def tree_laplace_corr(tree, x_data, laplace_smoothing, a=0, b=0):
-#     tree_prob = tree.predict_proba(x_data)
-#     leaf_index_array = tree.apply(x_data)
-#     for data_index, leaf_index in enumerate(leaf_index_array):
-#         leaf_values = tree.tree_.value[leaf_index]
-#         leaf_samples = np.array(leaf_values).sum()
-#         for i,v in enumerate(leaf_values[0]):
-#             L = laplace_smoothing
-#             if a != 0 or b != 0:
-#                 if i==0:
-#                     L = a
-#                 else:
-#                     L = b
-#             # print(f"i {i} v {v} a {a} b {b} L {L} prob {(v + L) / (leaf_samples + (len(leaf_values[0]) * L))}")
-#             tree_prob[data_index][i] = (v + L) / (leaf_samples + (len(leaf_values[0]) * L))
-#     return tree_prob
+print("acc RF    ", accuracy_score(y_test, RF_pred))
+print("acc LR_RF ",accuracy_score(y_test, LR_RF_pred))
