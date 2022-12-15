@@ -21,6 +21,8 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.tree import plot_tree
 import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score
+import CalibrationM as calibm
+from LR_RF_estimator import LR_RF
 
 # import Data.data_provider as dp
 # dataset = "adult"
@@ -79,6 +81,10 @@ _, _, y_train_rank, y_test_rank = train_test_split(features, target_rank, test_s
 model = RandomForestClassifier(max_depth=100, n_estimators=100, random_state=0)
 model.fit(x_train, y_train)
 
+model_lr = LR_RF(max_depth=100, n_estimators=100, random_state=0)
+model_lr.fit(x_train, y_train, y_train_rank)
+
+
 # get neighbor rankings
 borda_dict_list = []
 for i, estimator in enumerate(model.estimators_):
@@ -102,7 +108,21 @@ LR_RF_probs = RF_rankings / ranking_sum[:, np.newaxis]
 RF_probs = model.predict_proba(x_test)
 RF_pred = np.argmax(RF_probs, axis=1) # which is equal to the sklearn model.predict(x_test)
 
+RF_probs_rlsk = model_lr.predict_proba(x_test)
+RF_pred_rlsk = model_lr.predict(x_test) #np.argmax(RF_probs_rlsk, axis=1) # which is equal to the sklearn model.predict(x_test)
+
+
 LR_RF_pred = np.argmax(LR_RF_probs, axis=1)
 
-print("acc RF    ", accuracy_score(y_test, RF_pred))
-print("acc LR_RF ",accuracy_score(y_test, LR_RF_pred))
+print("acc RF       ", accuracy_score(y_test, RF_pred))
+print("acc LR_RF_sk ",accuracy_score(y_test, RF_pred_rlsk))
+print("acc LR_RF    ",accuracy_score(y_test, LR_RF_pred))
+
+
+RF_cw_ece = calibm.classwise_ECE(RF_probs, y_test)
+LR_RFcw_ece = calibm.classwise_ECE(LR_RF_probs, y_test)
+
+print("---------------------------------")
+
+print("cw_ece RF    ", np.array(RF_cw_ece).mean(axis=0))
+print("cw_ece LR_RF ", np.array(LR_RFcw_ece).mean(axis=0))
