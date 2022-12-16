@@ -470,3 +470,16 @@ class LR_RF(RandomForestClassifier_data):
 
     def predict(self, X):
         return np.argmax(self.predict_proba(X), axis=1)
+
+
+def convert_to_ranking(features, target):
+    gnb = GaussianNB()
+    y_pred = gnb.fit(features, target).predict_proba(features)
+    y_argsort = np.argsort(y_pred, axis=1, kind="stable")
+    target_rank = y_pred.copy()
+    for index, (y_r, y_a) in enumerate(zip(target_rank, y_argsort)):
+        for i in range(len(y_r)):
+            y_r[y_a[i]] = i
+        target_rank[index] = y_r
+    y_top_rank = np.argmax(target_rank, axis=1)
+    return target_rank, y_top_rank
