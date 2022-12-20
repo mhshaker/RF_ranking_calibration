@@ -4,9 +4,13 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, roc_auc_score
 from sklearn.datasets import make_blobs
+from sklearn.datasets import make_classification
+import Data.data_provider as dp
 
 # data
-X, y = make_blobs(n_samples=2000, n_features=2, centers=2, random_state=42, cluster_std=5.0)
+# X, y = make_blobs(n_samples=2000, n_features=2, centers=2, random_state=42, cluster_std=5.0)
+X, y = make_classification(n_samples=10000, n_features=40, n_informative=2, n_redundant=10, random_state=42)
+# X, y = dp.load_data("adult")
 
 # train RF
 x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.5, random_state=0)
