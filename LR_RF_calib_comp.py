@@ -5,8 +5,8 @@ from sklearn.calibration import CalibrationDisplay
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import GaussianNB
-from LR_RF_estimator import LR_RF
-from LR_RF_estimator import convert_to_ranking
+from estimators.LR_RF_estimator import LR_RF
+from estimators.LR_RF_estimator import convert_to_ranking
 from sklearn.metrics import log_loss
 from sklearn.calibration import CalibratedClassifierCV
 
