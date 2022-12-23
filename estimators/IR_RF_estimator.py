@@ -38,8 +38,8 @@ class IR_RF(RandomForestClassifier):
     def predict(self, X):
         return np.argmax(self.predict_proba(X), axis=1)
     
-    def rank(self, X, class_to_rank=0, return_tree_rankings=False):
-        probs = self.predict_proba(X, return_tree_prob=True)[:,:,class_to_rank]
+    def rank(self, X, class_to_rank=1, return_tree_rankings=False):
+        probs = self.predict_proba(X, laplace=0, return_tree_prob=True)[:,:,class_to_rank]
         prob_arg_sort = np.argsort(probs, axis=0, kind="stable")
 
         prob_arg_sort = prob_arg_sort.transpose([1,0]) 
