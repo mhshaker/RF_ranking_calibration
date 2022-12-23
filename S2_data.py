@@ -26,15 +26,21 @@ irrf = IR_RF(n_estimators=100, random_state=seed)
 irrf.fit(x_train, y_train)
 
 x_test_rank = irrf.rank(x_test, class_to_rank=1)
+x_test_prob = irrf.predict_proba(x_test, laplace=1)[:, 1]
 
 rank_sort_index = np.argsort(x_test_rank, kind="stable")
+prob_sort_index = np.argsort(x_test_prob, kind="stable")
 true_sort_index = np.argsort(tp_test, kind="stable")
 
 tp_test_rank_sort = tp_test[rank_sort_index]
+tp_test_prob_sort = tp_test[prob_sort_index]
 tp_test_true_sort = tp_test[true_sort_index]
 
-print("tp_test_rank_sort", tp_test_rank_sort)
-print("tp_test_true_sort", tp_test_true_sort)
+# print("tp_test_rank_sort", tp_test_rank_sort)
+# print("tp_test_true_sort", tp_test_true_sort)
 
 tau, p_value = kendalltau(tp_test_true_sort, tp_test_rank_sort)
+print("tau", tau)
+
+tau, p_value = kendalltau(tp_test_true_sort, tp_test_prob_sort)
 print("tau", tau)
