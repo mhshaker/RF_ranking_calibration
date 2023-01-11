@@ -1,4 +1,5 @@
 import numpy as np
+from math import isnan
 
 def classwise_ECE(probs, y_true, bins=10, equal_bin_size=True, full_ece=False):
     
@@ -60,8 +61,15 @@ def confidance_ECE(probs, y_true, bins=10, equal_bin_size=True):
         for bin in range(bins):
             bin_conf = prob_max[bin*bin_size:(bin+1)*bin_size].mean()
             bin_acc = correctness_map[bin*bin_size:(bin+1)*bin_size].sum() / bin_size
+            # print(f">>> bin_conf {bin_conf} bin_acc {bin_acc} ")
             dif = abs(bin_conf - bin_acc)
+            if isnan(dif):
+                break
             ece += dif * bin_size / len(probs)
 
     return ece 
 
+def convert_prob_2D(prob1D):
+    prob_second_class = np.ones(len(prob1D)) - prob1D
+    prob2D = np.concatenate((prob_second_class.reshape(-1,1), prob1D.reshape(-1,1)), axis=1)
+    return prob2D
