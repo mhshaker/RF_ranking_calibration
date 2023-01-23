@@ -186,8 +186,6 @@ if calib:
     print("iso ece      ", np.array(ECE_iso_list).mean())
     print("IRRF iso ece ", np.array(ECE_irrf_list).mean())
 
-    exit()
-
     # # plot perfectly calibrated
     # plt.plot([0, 1], [0, 1], linestyle='--')
     # # plot model reliability
