@@ -12,8 +12,8 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import normalize
 from CalibrationM import confidance_ECE, convert_prob_2D
 
-runs = 10
-n_estimators=100
+runs = 1
+n_estimators= 100
 samples = 10000
 
 plot_bins = 10
@@ -115,23 +115,17 @@ for seed in range(runs):
         # x_test_rank = irrf.rank(x_test, class_to_rank=1)
         x_test_rank = irrf.rank_refrence(x_test, class_to_rank=1)
 
-        # x_calib_rank_norm = x_calib_rank / x_calib_rank.max()
-        # x_test_rank_norm = x_test_rank / x_test_rank.max()
+        x_calib_rank_norm = x_calib_rank / x_calib_rank.max()
+        x_test_rank_norm = x_test_rank / x_calib_rank.max() # normalize test data with max of the calib data to preserve the scale
+    
+        iso_rank = IsotonicRegression().fit(x_calib_rank_norm, y_calib) 
+        irrf_cp_test = iso_rank.predict(x_test_rank_norm)
 
-        # print("x_calib_rank", x_calib_rank.shape)
-        # plt.plot(np.sort(x_calib_rank))
+        tp_calib_norm = tp_calib / tp_calib.max()
+        tp_test_norm = tp_test / tp_calib.max() # normalize test data with max of the calib data to preserve the scale
 
-        # plt.hist(x_calib_rank, 100)
-        # plt.show()
-        # exit()
-
-        iso_rank = IsotonicRegression().fit(x_calib_rank, y_calib) 
-        irrf_cp_test = iso_rank.predict(x_test_rank)
-
-        # tp_calib_norm = tp_calib / tp_calib.max()
-        # tp_test_norm = tp_test / tp_test.max()
-        iso_true = IsotonicRegression().fit(tp_calib, y_calib)
-        true_cp_test = iso_true.predict(tp_test)
+        iso_true = IsotonicRegression().fit(tp_calib_norm, y_calib)
+        true_cp_test = iso_true.predict(tp_test_norm)
 
 
         # sig = _SigmoidCalibration().fit(x_calib_rank, y_calib)
@@ -204,7 +198,7 @@ if calib:
     plt.plot(mpv, fop, marker='.', label="RF")
     plt.plot(fop_iso, mpv_iso, marker='.', label="RF+iso")
     plt.plot(fop_irrf, mpv_irrf, marker='.', label="RF+rank+ios", c="black")
-    # plt.plot(fop_true, mpv_true, marker='.', label="RF+true+ios", c="red")
+    plt.plot(fop_true, mpv_true, marker='.', label="RF+true+ios", c="red")
     # plt.plot(fop_irrf_sig, mpv_irrf_sig, marker='.', label="RF+rank+sig", c="blue")
     plt.legend()
     plt.show()
