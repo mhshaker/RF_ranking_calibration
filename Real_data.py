@@ -20,7 +20,7 @@ plot_bins = 10
 test_size = 0.3
 
 calib = True
-plot = True
+plot = False
 
 ECE_rf_list = []
 ECE_sig_list = []
@@ -28,7 +28,7 @@ ECE_iso_list = []
 ECE_irrf_list = []
 
 seed = 0
-X, y = dp.load_data("spambase")
+X, y = dp.load_data("bank") # spambase climate QSAR
 
 for min_samples_leaf in [2]:
     print("--------------------------------- min_samples_leaf", min_samples_leaf)
@@ -57,7 +57,7 @@ for min_samples_leaf in [2]:
             rf_cp_sig_test = sig_rf.predict(rf_p_test[:,1])
 
             # ISO calibration on RF
-            iso_rf = IsotonicRegression().fit(rf_p_calib[:,1], y_calib)
+            iso_rf = IsotonicRegression(out_of_bounds='clip').fit(rf_p_calib[:,1], y_calib)
             rf_cp_test = iso_rf.predict(rf_p_test[:,1])
 
             # Ranking with the RF
@@ -66,7 +66,7 @@ for min_samples_leaf in [2]:
 
 
             # RF ranking + ISO
-            iso_rank = IsotonicRegression().fit(x_calib_rank, y_calib) 
+            iso_rank = IsotonicRegression(out_of_bounds='clip').fit(x_calib_rank, y_calib) 
             irrf_cp_test = iso_rank.predict(x_test_rank)
 
             ece_rf = confidance_ECE(rf_p_test, y_test, bins=plot_bins)
