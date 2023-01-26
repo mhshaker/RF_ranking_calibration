@@ -26,6 +26,8 @@ def find_nearest(array, value):
 
 class IR_RF(RandomForestClassifier):
 
+    # refrence_prob = np.array()
+
     def predict_proba(self, X, laplace=1, return_tree_prob=False):
         prob_matrix  = []
         for estimator in self.estimators_:
@@ -80,7 +82,7 @@ class IR_RF(RandomForestClassifier):
         else:
             return IR_RF_rank
 
-    def rank_refrence(self, X, class_to_rank=1):
+    def rank_refrence(self, X, class_to_rank=1): # find where X fals in the ranking of calib data
         probs = self.predict_proba(X, laplace=1, return_tree_prob=True)[:,:,class_to_rank]
         ranks = []
         for prob in probs: # loop through data
