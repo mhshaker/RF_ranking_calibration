@@ -11,10 +11,12 @@ from sklearn.calibration import calibration_curve
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import normalize
 from CalibrationM import confidance_ECE, convert_prob_2D
+import Data.data_provider as dp
 
 runs = 1
 n_estimators= 100
 samples = 10000
+n_features = 100
 
 plot_bins = 10
 
@@ -40,9 +42,8 @@ for seed in range(runs):
     np.random.seed(seed)
 
     ### Synthetic data generation
-
-    X, tp = make_regression(samples) # make regression data
-    y = np.where(tp>0, 1, 0) # create classification labels by setting a threshold
+    X, y, tp = dp.make_classification_with_true_prob2(n_features,2,samples, seed)
+    # X, y, tp = dp.make_classification_with_true_prob(n_features,2,samples, seed)
 
     ### spliting data to train calib and test
     test_size = 0.4
@@ -107,7 +108,7 @@ for seed in range(runs):
         rf_p_calib = irrf.predict_proba(x_calib, laplace=0)
         rf_p_test = irrf.predict_proba(x_test, laplace=0)
 
-        iso_rf = IsotonicRegression().fit(rf_p_calib[:,1], y_calib)
+        iso_rf = IsotonicRegression(out_of_bounds='clip').fit(rf_p_calib[:,1], y_calib)
         rf_cp_test = iso_rf.predict(rf_p_test[:,1])
 
 
@@ -118,13 +119,13 @@ for seed in range(runs):
         x_calib_rank_norm = x_calib_rank / x_calib_rank.max()
         x_test_rank_norm = x_test_rank / x_calib_rank.max() # normalize test data with max of the calib data to preserve the scale
     
-        iso_rank = IsotonicRegression().fit(x_calib_rank_norm, y_calib) 
+        iso_rank = IsotonicRegression(out_of_bounds='clip').fit(x_calib_rank_norm, y_calib) 
         irrf_cp_test = iso_rank.predict(x_test_rank_norm)
 
         tp_calib_norm = tp_calib / tp_calib.max()
         tp_test_norm = tp_test / tp_calib.max() # normalize test data with max of the calib data to preserve the scale
 
-        iso_true = IsotonicRegression().fit(tp_calib_norm, y_calib)
+        iso_true = IsotonicRegression(out_of_bounds='clip').fit(tp_calib_norm, y_calib)
         true_cp_test = iso_true.predict(tp_test_norm)
 
 
@@ -198,7 +199,7 @@ if calib:
     plt.plot(mpv, fop, marker='.', label="RF")
     plt.plot(fop_iso, mpv_iso, marker='.', label="RF+iso")
     plt.plot(fop_irrf, mpv_irrf, marker='.', label="RF+rank+ios", c="black")
-    plt.plot(fop_true, mpv_true, marker='.', label="RF+true+ios", c="red")
+    plt.plot(fop_true, mpv_true, marker='.', label="RF+true+ios", c="blue")
     # plt.plot(fop_irrf_sig, mpv_irrf_sig, marker='.', label="RF+rank+sig", c="blue")
     plt.legend()
     plt.show()

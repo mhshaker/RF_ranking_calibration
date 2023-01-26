@@ -9,28 +9,35 @@ import matplotlib.pyplot as plt
 
 seed = 0
 
-calib = False
-kendal = True
+calib = True
+kendal = False
 
 np.random.seed(seed)
 # Synthetic data with 5 dimentions and 2 classes
 samples = 10000
+n_features = 5
 
-mean1 = [0, 2, 3, -1, 9]
-cov1 = [[.1, 0, 0, 0, 0], 
-        [0, .5, 0, 0, 0],
-        [0, 0, 0.8, 0, 0],
-        [0, 0, 0, .1, 0],
-        [0, 0, 0, 0, .3],
-        ]
+mean1 = np.random.uniform(-5,5,n_features) #[0, 2, 3, -1, 9]
+cov1 = np.zeros((n_features,n_features))
+np.fill_diagonal(cov1, np.random.uniform(0,1,n_features))
 
-mean2 = [-1, 3, 0, 2, 3]
-cov2 = [[.9, 0, 0, 0, 0], 
-        [0, .1, 0, 0, 0],
-        [0, 0, 0.3, 0, 0],
-        [0, 0, 0, .1, 0],
-        [0, 0, 0, 0, .7],
-        ]
+# cov1 = [[.1, 0, 0, 0, 0], 
+#         [0, .5, 0, 0, 0],
+#         [0, 0, 0.8, 0, 0],
+#         [0, 0, 0, .1, 0],
+#         [0, 0, 0, 0, .3],
+#         ]
+
+mean2 = np.random.uniform(-5,5,n_features) # [-1, 3, 0, 2, 3]
+cov2 = np.zeros((n_features,n_features))
+np.fill_diagonal(cov2, np.random.uniform(0,1,n_features))
+
+# cov2 = [[.9, 0, 0, 0, 0], 
+#         [0, .1, 0, 0, 0],
+#         [0, 0, 0.3, 0, 0],
+#         [0, 0, 0, .1, 0],
+#         [0, 0, 0, 0, .7],
+#         ]
 
 x1 = np.random.multivariate_normal(mean1, cov1, samples)
 x2 = np.random.multivariate_normal(mean2, cov2, samples)
