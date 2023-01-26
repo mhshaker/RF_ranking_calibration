@@ -203,3 +203,37 @@ def load_arff_2(data_name):
 	# print(features.head())
 
 	return np.array(features), np.array(target)
+
+from scipy.stats import multivariate_normal
+
+def make_classification_with_true_prob(n_features, n_classes=2, n_samples=10000, seed=0):
+	# Synthetic data with n_features dimentions and n_classes classes
+
+	np.random.seed(seed)
+
+	mean1 = np.random.uniform(-1,1,n_features) #[0, 2, 3, -1, 9]
+	cov1 = np.zeros((n_features,n_features))
+	np.fill_diagonal(cov1, np.random.uniform(0,1,n_features))
+
+	mean2 = np.random.uniform(-1,1,n_features) # [-1, 3, 0, 2, 3]
+	cov2 = np.zeros((n_features,n_features))
+	np.fill_diagonal(cov2, np.random.uniform(0,1,n_features))
+
+	x1 = np.random.multivariate_normal(mean1, cov1, n_samples)
+	x2 = np.random.multivariate_normal(mean2, cov2, n_samples)
+
+	x1_pdf_dif = multivariate_normal.pdf(x1, mean1, cov1) - multivariate_normal.pdf(x1, mean2, cov2)
+	x2_pdf_dif = multivariate_normal.pdf(x2, mean2, cov2) - multivariate_normal.pdf(x2, mean1, cov1)
+
+	X = np.concatenate([x1, x2])
+	y = np.concatenate([np.zeros(len(x1)), np.ones(len(x2))])
+	tp = np.concatenate([x1_pdf_dif, x2_pdf_dif])
+
+	return X, y, tp
+
+from sklearn.datasets import make_regression
+
+def make_classification_with_true_prob2(n_features, n_classes=2, n_samples=10000, seed=0):
+	X, tp = make_regression(n_samples, n_features) # make regression data
+	y = np.where(tp>0, 1, 0) # create classification labels by setting a threshold
+	return X, y, tp
