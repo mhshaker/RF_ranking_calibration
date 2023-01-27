@@ -42,8 +42,9 @@ for seed in range(runs):
     np.random.seed(seed)
 
     ### Synthetic data generation
-    X, y, tp = dp.make_classification_with_true_prob2(n_features,2,samples, seed)
-    # X, y, tp = dp.make_classification_with_true_prob(n_features,2,samples, seed)
+    # X, y, tp = dp.make_classification_with_true_prob3(samples, seed)
+    # X, y, tp = dp.make_classification_with_true_prob2(n_features,2,samples, seed)
+    X, y, tp = dp.make_classification_with_true_prob(n_features,2,samples, seed)
 
     ### spliting data to train calib and test
     test_size = 0.4
@@ -55,6 +56,7 @@ for seed in range(runs):
     ### training the IRRF
     irrf = IR_RF(n_estimators=n_estimators, random_state=seed)
     irrf.fit(x_train, y_train)
+    print("test score", irrf.score(x_test, y_test))
 
     # small test
     # x_test_prob = irrf.rank(x_test)
@@ -201,6 +203,9 @@ if calib:
     plt.plot(fop_irrf, mpv_irrf, marker='.', label="RF+rank+ios", c="black")
     plt.plot(fop_true, mpv_true, marker='.', label="RF+true+ios", c="blue")
     # plt.plot(fop_irrf_sig, mpv_irrf_sig, marker='.', label="RF+rank+sig", c="blue")
+    plt.xlabel("True probability")
+    plt.ylabel("Predicted probability")
+
     plt.legend()
     plt.show()
     # plt.savefig("calib_plot.png")

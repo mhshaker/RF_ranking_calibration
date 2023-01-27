@@ -13,14 +13,14 @@ import Data.data_provider as dp
 from sklearn.calibration import _SigmoidCalibration
 import matplotlib.pyplot as plt
 
-runs = 10
+runs = 1
 n_estimators=100
 
 plot_bins = 10
 test_size = 0.3
 
 calib = True
-plot = False
+plot = True
 
 ECE_rf_list = []
 ECE_sig_list = []
@@ -28,7 +28,7 @@ ECE_iso_list = []
 ECE_irrf_list = []
 
 seed = 0
-X, y = dp.load_data("bank") # spambase climate QSAR
+X, y = dp.load_data("spambase") # spambase climate QSAR
 
 for min_samples_leaf in [2]:
     print("--------------------------------- min_samples_leaf", min_samples_leaf)
@@ -86,17 +86,32 @@ for min_samples_leaf in [2]:
             ECE_irrf_list.append(ece_irrf)
 
             if plot:
-                fop, mpv = calibration_curve(y_test, rf_p_test[:,1], n_bins=plot_bins)
-                fop_iso, mpv_iso = calibration_curve(y_test, rf_cp_test, n_bins=plot_bins)
-                fop_sig, mpv_sig = calibration_curve(y_test, rf_cp_sig_test, n_bins=plot_bins)
-                fop_irrf, mpv_irrf = calibration_curve(y_test, irrf_cp_test, n_bins=plot_bins)
+                tp, pp = calibration_curve(y_test, rf_p_test[:,1], n_bins=plot_bins)
+                tp_iso, pp_iso = calibration_curve(y_test, rf_cp_test, n_bins=plot_bins)
+                tp_sig, pp_sig = calibration_curve(y_test, rf_cp_sig_test, n_bins=plot_bins)
+                tp_irrf, pp_irrf = calibration_curve(y_test, irrf_cp_test, n_bins=plot_bins)
                 
+
+
+
                 plt.plot([0, 1], [0, 1], linestyle='--')
-                plt.plot(mpv, fop, marker='.', label="RF")
-                plt.plot(fop_sig, mpv_sig, marker='.', label="RF+sig")
-                plt.plot(fop_iso, mpv_iso, marker='.', label="RF+iso")
-                plt.plot(fop_irrf, mpv_irrf, marker='.', label="RF+rank+ios", c="black")
+                plt.plot(tp, pp, marker='.', label="RF")
+                # plt.plot(tp_sig, pp_sig, marker='.', label="RF+sig")
+                plt.plot(tp_iso, pp_iso, marker='.', label="RF+iso")
+                plt.plot(tp_irrf, pp_irrf, marker='.', label="RF+rank+ios", c="black")
+                plt.xlabel("True probability")
+                plt.ylabel("Mean predicted probability")
                 plt.legend()
+                plt.show()
+
+                plt.hist(pp_iso, color="green")
+                plt.ylabel("Count")
+                plt.xlabel("Mean predicted probability")
+
+                plt.show()
+                plt.hist(pp,color="black")
+                plt.ylabel("Count")
+                plt.xlabel("Mean predicted probability")
                 plt.show()
 
 

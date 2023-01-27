@@ -237,3 +237,12 @@ def make_classification_with_true_prob2(n_features, n_classes=2, n_samples=10000
 	X, tp = make_regression(n_samples, n_features) # make regression data
 	y = np.where(tp>0, 1, 0) # create classification labels by setting a threshold
 	return X, y, tp
+
+def make_classification_with_true_prob3(n_samples, w=2, noise_mu=0, noise_sigma=0.1, seed=0):
+	# y = x.w + noise
+	n = np.random.normal(noise_mu, noise_sigma, n_samples)
+	x = np.random.uniform(-1,1,n_samples)
+	tp = x * w + n
+
+	y = np.where(tp>0, 1, 0) # create classification labels by setting a threshold
+	return x.reshape(-1, 1), y, x
