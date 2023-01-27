@@ -15,7 +15,7 @@ import Data.data_provider as dp
 
 runs = 1
 n_estimators= 100
-samples = 10000
+samples = 100
 n_features = 100
 
 plot_bins = 10
@@ -42,8 +42,14 @@ for seed in range(runs):
     np.random.seed(seed)
 
     ### Synthetic data generation
-    # X, y, tp = dp.make_classification_with_true_prob3(samples, seed)
-    X, y, tp = dp.make_classification_with_true_prob2(n_features,2,samples, seed)
+    X, y, tp = dp.make_classification_with_true_prob(samples, 2 , seed)
+    # X, y, tp = dp.make_classification_with_true_prob2(n_features,2,samples, seed)
+    plt.scatter(X[:,0],tp, c=y)
+    plt.xlabel("x")
+    plt.ylabel("true rank")
+
+    plt.show()
+    exit()
     # X, y, tp = dp.make_classification_with_true_prob(n_features,2,samples, seed)
 
     ### spliting data to train calib and test
@@ -118,11 +124,13 @@ for seed in range(runs):
 
         ## Random Forest + Rrank + ISO
         x_calib_rank = irrf.rank(x_calib, class_to_rank=1, train_rank=True)
-        print("x_calib_rank", len(np.unique(x_calib_rank)), " x_calib ", len(x_calib))
+        # print("x_calib_rank", len(np.unique(x_calib_rank)), " x_calib ", len(x_calib))
+        # plt.plot(np.unique(x_calib_rank), '.')
+        # plt.show()
         # x_test_rank = irrf.rank(x_test, class_to_rank=1)
         x_test_rank = irrf.rank_refrence(x_test, class_to_rank=1)
-        print("x_test_rank", len(np.unique(x_calib_rank)), " x_test", len(x_test))
-        exit()
+        # print("x_test_rank", len(np.unique(x_calib_rank)), " x_test", len(x_test))
+        # exit()
 
         x_calib_rank_norm = x_calib_rank / x_calib_rank.max()
         x_test_rank_norm = x_test_rank / x_calib_rank.max() # normalize test data with max of the calib data to preserve the scale
