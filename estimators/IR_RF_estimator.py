@@ -18,7 +18,7 @@ def tree_laplace_corr(tree, x_data, laplace_smoothing, return_counts=False):
                 tree_prob[data_index][i] = (v + L) / (leaf_samples + (len(leaf_values[0]) * L))
     return tree_prob
 
-def find_nearest(array, value):
+def find_nearest_index(array, value):
     array = np.asarray(array)
     idx = (np.abs(array - value)).argmin()
     return idx
@@ -54,16 +54,27 @@ class IR_RF(RandomForestClassifier):
     
     def rank(self, X, class_to_rank=1, train_rank=False, return_tree_rankings=False):
         probs = self.predict_proba(X, laplace=1, return_tree_prob=True)[:,:,class_to_rank]
-        # print("probs\n", probs.transpose([1,0]))
         # probs = self.tree_leafcounts(X, laplace=1)[:,:,class_to_rank] # not probs but the number of instances in the leafs of the trees
+
+        # print("<<<<<rank function>>>>>")
+        # print("probs", probs)
+        # print("probs shape", probs.shape)
+        # print("probs\n", probs.transpose([1,0]))
         prob_arg_sort = np.argsort(probs, axis=0, kind="stable")
+        # print("prob_arg_sort", prob_arg_sort)
+        # exit()
         prob_arg_sort = prob_arg_sort.transpose([1,0]) 
         # print("sorted prob index\n", prob_arg_sort)
+        # print("sorted prob index shape", prob_arg_sort.shape)
+
         # exit()
         probs = probs.transpose([1,0]) 
         prob_rank = probs.copy()
         if train_rank:
             self.refrence_prob = np.sort(probs, axis=1) # np.sort(probs, axis=0, kind="stable")
+            # self.refrence_prob = np.unique(probs, axis=1) # np.sort(probs, axis=0, kind="stable")
+            # print("probs shape  ", probs.shape)
+            # print("refrence_prob shape  ", self.refrence_prob.shape)
             # print("refrence_prob", self.refrence_prob)
             # exit()
 
@@ -72,7 +83,7 @@ class IR_RF(RandomForestClassifier):
                 y_r[y_a[i]] = i
             prob_rank[index] = y_r
         # print("prob_rank", prob_rank.shape)
-        IR_RF_rank = prob_rank.sum(axis=0)
+        IR_RF_rank = prob_rank.sum(axis=0) / self.n_estimators
         # print("---------------------------------")
         # print("IR_RF_rank", IR_RF_rank)
         # exit()
@@ -84,12 +95,19 @@ class IR_RF(RandomForestClassifier):
 
     def rank_refrence(self, X, class_to_rank=1): # find where X fals in the ranking of calib data
         probs = self.predict_proba(X, laplace=1, return_tree_prob=True)[:,:,class_to_rank]
+        # probs = self.tree_leafcounts(X, laplace=1)[:,:,class_to_rank] # not probs but the number of instances in the leafs of the trees
+
         ranks = []
         for prob in probs: # loop through data
             data_rank = 0
             for tree_prob, ref_prob in zip(prob, self.refrence_prob): # loop through trees
-                data_rank += find_nearest(ref_prob, tree_prob)
-            ranks.append(data_rank)
+                # print("refrence tree prob", ref_prob)
+                # print("refrence tree prob", np.unique(ref_prob))
+                # print("X tree prob", tree_prob)
+                # print("nearest", find_nearest_index(np.unique(ref_prob), tree_prob))
+                # exit()
+                data_rank += find_nearest_index(ref_prob, tree_prob)
+            ranks.append(data_rank/self.n_estimators)
         return np.array(ranks)
 
     def rank_fa(self, X, class_to_rank=1): # rank fa
