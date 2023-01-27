@@ -43,8 +43,8 @@ for seed in range(runs):
 
     ### Synthetic data generation
     # X, y, tp = dp.make_classification_with_true_prob3(samples, seed)
-    # X, y, tp = dp.make_classification_with_true_prob2(n_features,2,samples, seed)
-    X, y, tp = dp.make_classification_with_true_prob(n_features,2,samples, seed)
+    X, y, tp = dp.make_classification_with_true_prob2(n_features,2,samples, seed)
+    # X, y, tp = dp.make_classification_with_true_prob(n_features,2,samples, seed)
 
     ### spliting data to train calib and test
     test_size = 0.4
@@ -107,16 +107,22 @@ for seed in range(runs):
 
     if calib:
         ### calibration and ECE plot
+
+        ## Normal random forest
         rf_p_calib = irrf.predict_proba(x_calib, laplace=0)
         rf_p_test = irrf.predict_proba(x_test, laplace=0)
 
+        ## Random Forest + ISO
         iso_rf = IsotonicRegression(out_of_bounds='clip').fit(rf_p_calib[:,1], y_calib)
         rf_cp_test = iso_rf.predict(rf_p_test[:,1])
 
-
+        ## Random Forest + Rrank + ISO
         x_calib_rank = irrf.rank(x_calib, class_to_rank=1, train_rank=True)
+        print("x_calib_rank", len(np.unique(x_calib_rank)), " x_calib ", len(x_calib))
         # x_test_rank = irrf.rank(x_test, class_to_rank=1)
         x_test_rank = irrf.rank_refrence(x_test, class_to_rank=1)
+        print("x_test_rank", len(np.unique(x_calib_rank)), " x_test", len(x_test))
+        exit()
 
         x_calib_rank_norm = x_calib_rank / x_calib_rank.max()
         x_test_rank_norm = x_test_rank / x_calib_rank.max() # normalize test data with max of the calib data to preserve the scale
@@ -124,6 +130,7 @@ for seed in range(runs):
         iso_rank = IsotonicRegression(out_of_bounds='clip').fit(x_calib_rank_norm, y_calib) 
         irrf_cp_test = iso_rank.predict(x_test_rank_norm)
 
+        ## True Rank  + ISO
         tp_calib_norm = tp_calib / tp_calib.max()
         tp_test_norm = tp_test / tp_calib.max() # normalize test data with max of the calib data to preserve the scale
 
