@@ -43,7 +43,7 @@ for seed in range(runs):
 
     ### Synthetic data generation
     X, y, tp = dp.make_classification_with_true_prob(samples, 2 , seed)
-    # X, y, tp = dp.make_classification_with_true_prob2(n_features,2,samples, seed)
+    # X, y, tp = dp.make_classification_with_true_prob2(samples, n_features,2, seed)
     plt.scatter(X[:,0],tp, c=y)
     plt.xlabel("x")
     plt.ylabel("true rank")

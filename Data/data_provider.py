@@ -206,7 +206,7 @@ def load_arff_2(data_name):
 
 from scipy.stats import multivariate_normal
 
-def make_classification_with_true_prob(n_features, n_classes=2, n_samples=10000, seed=0):
+def make_classification_with_true_prob(n_samples, n_features, n_classes=2, seed=0):
 	# Synthetic data with n_features dimentions and n_classes classes
 
 	np.random.seed(seed)
@@ -233,8 +233,8 @@ def make_classification_with_true_prob(n_features, n_classes=2, n_samples=10000,
 
 from sklearn.datasets import make_regression
 
-def make_classification_with_true_prob2(n_features, n_classes=2, n_samples=10000, seed=0):
-	X, tp = make_regression(n_samples, n_features) # make regression data
+def make_classification_with_true_prob2(n_samples, n_features, n_classes=2, seed=0):
+	X, tp = make_regression(n_samples, n_features, tail_strength=0) # make regression data
 	y = np.where(tp>0, 1, 0) # create classification labels by setting a threshold
 	return X, y, tp
 
