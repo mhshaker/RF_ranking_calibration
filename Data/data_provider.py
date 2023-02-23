@@ -215,7 +215,7 @@ def make_classification_with_true_prob(n_samples, n_features, n_classes=2, seed=
 	cov1 = np.zeros((n_features,n_features))
 	np.fill_diagonal(cov1, np.random.uniform(0,1,n_features))
 
-	mean2 = np.random.uniform(-1,1,n_features) # [-1, 3, 0, 2, 3]
+	mean2 = np.random.uniform(-1,0,n_features) # [-1, 3, 0, 2, 3]
 	cov2 = np.zeros((n_features,n_features))
 	np.fill_diagonal(cov2, np.random.uniform(0,1,n_features))
 

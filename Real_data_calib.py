@@ -12,26 +12,46 @@ from CalibrationM import confidance_ECE, convert_prob_2D, classwise_ECE
 import Data.data_provider as dp
 from sklearn.calibration import _SigmoidCalibration
 import matplotlib.pyplot as plt
+from sklearn.metrics import brier_score_loss
 
-runs = 1
-n_estimators=100
+runs = 3
+n_estimators=10
 
 plot_bins = 10
 test_size = 0.3
 
 calib = True
-plot = True
+ece_score = False
+brier_score = True
+plot = False
 
 ECE_rf_list = []
 ECE_sig_list = []
 ECE_iso_list = []
 ECE_irrf_list = []
 
-seed = 0
-X, y = dp.load_data("spambase") # spambase climate QSAR
+brier_rf_list = []
+brier_sig_list = []
+brier_iso_list = []
+brier_irrf_list = []
 
-for min_samples_leaf in [2]:
-    print("--------------------------------- min_samples_leaf", min_samples_leaf)
+results_dict = {}
+
+
+seed = 0
+calib_methods = ["RF", "RF + Platt" , "RF + ISO", "RF + Rank + ISO"]
+# data_list = ["spambase", "climate", "QSAR", "bank", "climate", "parkinsons", "vertebral", "ionosphere", "diabetes", "breast", "blod"]
+data_list = ["spambase", "climate"]
+
+for data in data_list:
+    print("--------------------------------- data", data)
+    if brier_score:
+        brier_dict = {}
+        for method in calib_methods:
+            brier_dict[method] = []
+
+    X, y = dp.load_data(data)
+
     for seed in range(runs):
         # seed = 5
         # print("seed ", seed)
@@ -52,7 +72,7 @@ for min_samples_leaf in [2]:
             rf_p_calib = irrf.predict_proba(x_calib, laplace=1)
             rf_p_test = irrf.predict_proba(x_test, laplace=1)
 
-            # sigmoid calibration on RF
+            # Platt scaling on RF
             sig_rf = _SigmoidCalibration().fit(rf_p_calib[:,1], y_calib)
             rf_cp_sig_test = sig_rf.predict(rf_p_test[:,1])
 
@@ -69,10 +89,27 @@ for min_samples_leaf in [2]:
             iso_rank = IsotonicRegression(out_of_bounds='clip').fit(x_calib_rank, y_calib) 
             irrf_cp_test = iso_rank.predict(x_test_rank)
 
-            ece_rf = confidance_ECE(rf_p_test, y_test, bins=plot_bins)
-            ece_sig = confidance_ECE(convert_prob_2D(rf_cp_sig_test), y_test, bins=plot_bins)
-            ece_iso = confidance_ECE(convert_prob_2D(rf_cp_test), y_test, bins=plot_bins)
-            ece_irrf = confidance_ECE(convert_prob_2D(irrf_cp_test), y_test, bins=plot_bins)
+            if ece_score:
+                ece_rf = confidance_ECE(rf_p_test, y_test, bins=plot_bins)
+                ece_sig = confidance_ECE(convert_prob_2D(rf_cp_sig_test), y_test, bins=plot_bins)
+                ece_iso = confidance_ECE(convert_prob_2D(rf_cp_test), y_test, bins=plot_bins)
+                ece_irrf = confidance_ECE(convert_prob_2D(irrf_cp_test), y_test, bins=plot_bins)
+
+                ECE_rf_list.append(ece_rf)
+                ECE_sig_list.append(ece_sig)
+                ECE_iso_list.append(ece_iso)
+                ECE_irrf_list.append(ece_irrf)
+
+            if brier_score:
+                brier_dict["RF"] = brier_score_loss(y_test, rf_p_test[:,1])
+                brier_dict["RF + Platt"] = brier_score_loss(y_test,rf_cp_sig_test)
+                brier_dict["RF + ISO"] = brier_score_loss(y_test, rf_cp_test)
+                brier_dict["RF + Rank + ISO"] = brier_score_loss(y_test, irrf_cp_test)
+
+                # brier_rf_list.append(brier_rf)
+                # brier_sig_list.append(brier_sig)
+                # brier_iso_list.append(brier_iso)
+                # brier_irrf_list.append(brier_irrf)
 
             # ece_rf = classwise_ECE(rf_p_test, y_test, bins=plot_bins, full_ece=True)
             # ece_sig = classwise_ECE(convert_prob_2D(rf_cp_sig_test), y_test, bins=plot_bins, full_ece=True)
@@ -80,10 +117,6 @@ for min_samples_leaf in [2]:
             # ece_irrf = classwise_ECE(convert_prob_2D(irrf_cp_test), y_test, bins=plot_bins, full_ece=True)
 
 
-            ECE_rf_list.append(ece_rf)
-            ECE_sig_list.append(ece_sig)
-            ECE_iso_list.append(ece_iso)
-            ECE_irrf_list.append(ece_irrf)
 
             if plot:
                 tp, pp = calibration_curve(y_test, rf_p_test[:,1], n_bins=plot_bins)
@@ -114,10 +147,22 @@ for min_samples_leaf in [2]:
                 plt.xlabel("Mean predicted probability")
                 plt.show()
 
+    if brier_score:
+        results_dict[data + "_brier"] = brier_dict
 
 
-    if calib:
-        print("normal ece   ", np.array(ECE_rf_list).mean())
-        print("sig ece      ", np.array(ECE_sig_list).mean())
-        print("iso ece      ", np.array(ECE_iso_list).mean())
-        print("IRRF iso ece ", np.array(ECE_irrf_list).mean())
+    if ece_score:
+        print("--------------------- ece_score")
+        print("RF              ", np.array(ECE_rf_list).mean())
+        print("RF + Platt      ", np.array(ECE_sig_list).mean())
+        print("RF + iso        ", np.array(ECE_iso_list).mean())
+        print("RF + rank + iso ", np.array(ECE_irrf_list).mean())
+    
+    if brier_score:
+        print("--------------------- brier_score")
+        for k, v in results_dict[data + "_brier"].items():
+            print(k, np.array(v).mean())
+        # print("RF              ", np.array(results_dict[data + "_brier"]["RF"]).mean())
+        # print("RF + platt       ", np.array(brier_sig_list).mean())
+        # print("RF + iso         ", np.array(brier_iso_list).mean())
+        # print("RF + rank + iso  ", np.array(brier_irrf_list).mean())

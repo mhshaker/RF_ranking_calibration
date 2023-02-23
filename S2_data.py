@@ -13,45 +13,59 @@ from sklearn.preprocessing import normalize
 from CalibrationM import confidance_ECE, convert_prob_2D
 import Data.data_provider as dp
 
-runs = 1
+runs = 10
 n_estimators= 100
-samples = 100
+samples = 10000
 n_features = 100
 
 plot_bins = 10
 
 calib = True
 kendal = False
+plot_data = False
+plot_true_rank = False
 
 tree_rank_tau = []
 rf_rank_tau = []
 rf_prob_tau = []
 
-fop_list, mpv_list = [], []
-fop_iso_list, mpv_iso_list = [], []
-fop_irrf_list, mpv_irrf_list = [], [] 
-fop_true_list, mpv_true_list = [], []
+y_test_list = []
+rf_p_test_list = []
+rf_cp_test_list = [] 
+irrf_cp_test_list = []
+true_cp_test_list = []
+
+tp_list, pp_list = [], []
+tp_iso_list, pp_iso_list = [], []
+tp_irrf_list, pp_irrf_list = [], [] 
+tp_true_list, pp_true_list = [], []
 
 ECE_rf_list = []
 ECE_iso_list = []
 ECE_irrf_list = []
+ECE_true_list = []
 
-seed = 0
+run_name = "G_ECE values 10k"
+
+print("run_name", run_name)
+
 for seed in range(runs):
+    # seed = 3
+
     print("seed ", seed)
     np.random.seed(seed)
 
     ### Synthetic data generation
-    X, y, tp = dp.make_classification_with_true_prob(samples, 2 , seed)
-    # X, y, tp = dp.make_classification_with_true_prob2(samples, n_features,2, seed)
-    plt.scatter(X[:,0],tp, c=y)
-    plt.xlabel("x")
-    plt.ylabel("true rank")
-
-    plt.show()
-    exit()
+    # X, y, tp = dp.make_classification_with_true_prob(samples, 2 , seed)
+    X, y, tp = dp.make_classification_with_true_prob2(samples, n_features,2, seed)
+   
     # X, y, tp = dp.make_classification_with_true_prob(n_features,2,samples, seed)
-
+    if plot_data:
+        plt.scatter(X[:,0],tp, c=y)
+        plt.xlabel("x")
+        plt.ylabel("true rank")
+        plt.show()
+        exit()
     ### spliting data to train calib and test
     test_size = 0.4
     x_train_calib, x_test, y_train_calib, y_test = train_test_split(X, y, test_size=test_size, shuffle=True, random_state=seed)
@@ -64,11 +78,6 @@ for seed in range(runs):
     irrf.fit(x_train, y_train)
     print("test score", irrf.score(x_test, y_test))
 
-    # small test
-    # x_test_prob = irrf.rank(x_test)
-    # x_test_prob = irrf.predict_proba(x_test, laplace=1, return_tree_prob=True)
-    # # print("x_test_prob ", x_test_prob[:,:,1])
-    # exit()
 
     if kendal:
 
@@ -92,24 +101,28 @@ for seed in range(runs):
         tp_test_tree_sort = tp_test[tree_sort_index]
 
         ### ranking performance of the IRRF compared to true rankings
+
+        # class 1 vs class 0 in RF rank
         tau, p_value = kendalltau(tp_test_rank_sort, tp_test_rank0_sort)
         # tree_rank_tau.append(tau)
         # print("rank1 vs rank0 tau", tau)
         # exit()
 
-
+        # True vs Tree rank
         tau, p_value = kendalltau(tp_test_true_sort, tp_test_tree_sort)
         tree_rank_tau.append(tau)
         # print("true vs tree_rank tau", tau)
 
-
+        # True vs RF rank
         tau, p_value = kendalltau(tp_test_true_sort, tp_test_rank_sort)
         rf_rank_tau.append(tau)
-        # print("true vs rank tau", tau)
+        print("---------------------------------")
+        print("true vs rank p_value", p_value)
 
+        # True vs RF prob rank
         tau, p_value = kendalltau(tp_test_true_sort, tp_test_prob_sort)
         rf_prob_tau.append(tau)
-        # print("true vs RFprob tau", tau)
+        print("true vs RFprob p_value", p_value)
 
     if calib:
         ### calibration and ECE plot
@@ -124,13 +137,7 @@ for seed in range(runs):
 
         ## Random Forest + Rrank + ISO
         x_calib_rank = irrf.rank(x_calib, class_to_rank=1, train_rank=True)
-        # print("x_calib_rank", len(np.unique(x_calib_rank)), " x_calib ", len(x_calib))
-        # plt.plot(np.unique(x_calib_rank), '.')
-        # plt.show()
-        # x_test_rank = irrf.rank(x_test, class_to_rank=1)
         x_test_rank = irrf.rank_refrence(x_test, class_to_rank=1)
-        # print("x_test_rank", len(np.unique(x_calib_rank)), " x_test", len(x_test))
-        # exit()
 
         x_calib_rank_norm = x_calib_rank / x_calib_rank.max()
         x_test_rank_norm = x_test_rank / x_calib_rank.max() # normalize test data with max of the calib data to preserve the scale
@@ -149,42 +156,30 @@ for seed in range(runs):
         # sig = _SigmoidCalibration().fit(x_calib_rank, y_calib)
         # irrf_cp_test_sig = iso.predict(x_test_rank)
 
-        fop, mpv = calibration_curve(y_test, rf_p_test[:,1], n_bins=plot_bins)
-        fop_iso, mpv_iso = calibration_curve(y_test, rf_cp_test, n_bins=plot_bins)
-        fop_irrf, mpv_irrf = calibration_curve(y_test, irrf_cp_test, n_bins=plot_bins)
-        fop_true, mpv_true = calibration_curve(y_test, true_cp_test, n_bins=plot_bins)
+        y_test_list.append(y_test)
+
+        rf_p_test_list.append(rf_p_test[:,1])
+        rf_cp_test_list.append(rf_cp_test)
+        irrf_cp_test_list.append(irrf_cp_test)
+        true_cp_test_list.append(true_cp_test)
+        
+        # tp, pp = calibration_curve(y_test, rf_p_test[:,1], n_bins=plot_bins)
+        # tp_iso, pp_iso = calibration_curve(y_test, rf_cp_test, n_bins=plot_bins)
+        # tp_irrf, pp_irrf = calibration_curve(y_test, irrf_cp_test, n_bins=plot_bins)
+        # tp_true, pp_true = calibration_curve(y_test, true_cp_test, n_bins=plot_bins)
 
         ece_rf = confidance_ECE(rf_p_test, y_test)
         ece_iso = confidance_ECE(convert_prob_2D(rf_cp_test), y_test)
         ece_irrf = confidance_ECE(convert_prob_2D(irrf_cp_test), y_test)
+        ece_true = confidance_ECE(convert_prob_2D(true_cp_test), y_test)
 
-        # print("ece_rf", ece_rf)
-        # print("ece_iso", ece_iso)
-        # print("ece_irrf", ece_irrf)
+
 
         ECE_rf_list.append(ece_rf)
         ECE_iso_list.append(ece_iso)
         ECE_irrf_list.append(ece_irrf)
+        ECE_true_list.append(ece_true)
 
-        # print("text", fop.shape)
-        # print("text", mpv.shape)
-        # print("text", fop_iso.shape)
-        # print("text", mpv_iso.shape)
-        # print("text", fop_irrf.shape)
-        # print("text", mpv_irrf.shape)
-        # print("text", fop_true)
-        # print("text", mpv_true)
-
-        # fop_list[seed] = fop
-        # mpv_list[seed] = mpv
-        # fop_iso_list[seed] = fop_iso
-        # mpv_iso_list[seed] = mpv_iso
-        # fop_irrf_list[seed] = fop_irrf
-        # mpv_irrf_list[seed] = mpv_irrf
-        # fop_true_list[seed] = fop_true
-        # mpv_true_list[seed] = mpv_true
-
-        # fop_irrf_sig, mpv_irrf_sig = calibration_curve(y_test, irrf_cp_test_sig, n_bins=10)
 
 
 if kendal:
@@ -197,30 +192,59 @@ if calib:
     print("normal ece   ", np.array(ECE_rf_list).mean())
     print("iso ece      ", np.array(ECE_iso_list).mean())
     print("IRRF iso ece ", np.array(ECE_irrf_list).mean())
+    print("True iso ece ", np.array(ECE_true_list).mean())
 
-    # # plot perfectly calibrated
-    # plt.plot([0, 1], [0, 1], linestyle='--')
-    # # plot model reliability
-    # plt.plot(mpv_list.mean(axis=0), fop_list.mean(axis=0), marker='.', label="RF")
-    # plt.plot(fop_iso_list.mean(axis=0), mpv_iso_list.mean(axis=0), marker='.', label="RF+iso")
-    # plt.plot(fop_irrf_list.mean(axis=0), mpv_irrf_list.mean(axis=0), marker='.', label="RF+rank+ios", c="black")
-    # # plt.plot(fop_true, mpv_true, marker='.', label="RF+true+ios", c="red")
-    # # plt.plot(fop_irrf_sig, mpv_irrf_sig, marker='.', label="RF+rank+sig", c="blue")
-    # plt.legend()
+
+    
+    y_test_all = np.array(y_test_list).reshape(-1)
+    rf_p_test_all = np.array(rf_p_test_list).reshape(-1)
+    rf_cp_test_all = np.array(rf_cp_test_list).reshape(-1)
+    irrf_cp_test_all = np.array(irrf_cp_test_list).reshape(-1)
+    true_cp_test_all = np.array(true_cp_test_list).reshape(-1)
+
+    # plt.hist(rf_p_test_all, bins=100)
     # plt.show()
-    # # plt.savefig("calib_plot.png")
+    # plt.hist(rf_cp_test_all, bins=100)
+    # plt.show()
+    # plt.hist(irrf_cp_test_all, bins=100)
+    # plt.show()
+    # plt.hist(true_cp_test_all, bins=100)
+    # plt.show()
+
+    # exit()
+
+
+
+    print("---------------------------------")
+    
+    ece_rf = confidance_ECE(convert_prob_2D(rf_p_test_all), y_test_all)
+    ece_iso = confidance_ECE(convert_prob_2D(rf_cp_test_all), y_test_all)
+    ece_irrf = confidance_ECE(convert_prob_2D(irrf_cp_test_all), y_test_all)
+    ece_true = confidance_ECE(convert_prob_2D(true_cp_test_all), y_test_all)
+
+    print("normal ece   ", ece_rf)
+    print("iso ece      ", ece_iso)
+    print("IRRF iso ece ", ece_irrf)
+    print("True iso ece ", ece_true)
+
+    tp, pp = calibration_curve(y_test_all, rf_p_test_all, n_bins=plot_bins)
+    tp_iso, pp_iso = calibration_curve(y_test_all, rf_cp_test_all, n_bins=plot_bins)
+    tp_irrf, pp_irrf = calibration_curve(y_test_all, irrf_cp_test_all, n_bins=plot_bins)
+    tp_true, pp_true = calibration_curve(y_test_all, true_cp_test_all, n_bins=plot_bins)
 
     # plot perfectly calibrated
     plt.plot([0, 1], [0, 1], linestyle='--')
     # plot model reliability
-    plt.plot(mpv, fop, marker='.', label="RF")
-    plt.plot(fop_iso, mpv_iso, marker='.', label="RF+iso")
-    plt.plot(fop_irrf, mpv_irrf, marker='.', label="RF+rank+ios", c="black")
-    plt.plot(fop_true, mpv_true, marker='.', label="RF+true+ios", c="blue")
-    # plt.plot(fop_irrf_sig, mpv_irrf_sig, marker='.', label="RF+rank+sig", c="blue")
+    plt.plot(tp, pp, marker='.', label="RF")
+    plt.plot(tp_iso, pp_iso, marker='.', label="RF+iso")
+    plt.plot(tp_irrf, pp_irrf, marker='.', label="RF+rank+ios", c="black")
+    if plot_true_rank:
+        plt.plot(tp_true, pp_true, marker='.', label="RF+true+ios", c="blue")
+    # plt.plot(tp_irrf_sig, pp_irrf_sig, marker='.', label="RF+rank+sig", c="blue")
     plt.xlabel("True probability")
     plt.ylabel("Predicted probability")
 
     plt.legend()
-    plt.show()
-    # plt.savefig("calib_plot.png")
+    # plt.show()
+    plt.savefig("calib_plot.png", transparent=True)
+    # plt.savefig('calib_plot_v.eps', format='eps', transparent=True)
