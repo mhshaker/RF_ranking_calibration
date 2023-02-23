@@ -1,9 +1,8 @@
-import numpy as np
 
-d = {}
 
-d["0"] = []
+x = ["a", "b", "c"]
 
-for i in range(10):
-    d["0"].append(i)
-print("d", d)
+if "x" in x:
+    print("yes")
+else:
+    print("fuck")
