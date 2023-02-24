@@ -10,10 +10,6 @@ class CRF_calib(BaseEstimator, ClassifierMixin):
     def __init__(self, step=1, learning_method='sig_brior'):
 
         self.step = step
-    def __init__(self, r=0.5, r_step=0.1, learning_method='brier_opt'):
-        
-        self.r = r
-        self.r_step = r_step
         self.learning_method = learning_method
 
 
