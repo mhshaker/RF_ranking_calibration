@@ -39,7 +39,7 @@ plot = False
 results_dict = {}
 
 seed = 0
-calib_methods = ["RF", "Platt" , "ISO", "Rank"]
+calib_methods = ["RF", "Platt" , "ISO", "Rank", "CRF"]
 metrics = ["acc", "auc", "brier", "ece"]
 data_list = ["spambase", "climate", "QSAR", "bank", "climate", "parkinsons", "vertebral", "ionosphere", "diabetes", "breast", "blod"]
 # data_list = ["parkinsons", "vertebral"]
@@ -99,14 +99,17 @@ for data in data_list:
 
         # CRF calibrator
         crf_calib = CRF_calib().fit(rf_p_calib[:,1], y_calib)
-        crf_p_test = convert_prob_2D(crf_calib.predict(rf_p_test[:,1]))
+        crf_p_test = crf_calib.predict(rf_p_test[:,1])
         crf_d_test = np.argmax(crf_p_test,axis=1)
 
+        print("crf_p_test", crf_p_test.shape)
+        exit()
         if "acc" in metrics:
             results_dict[data + "_acc"]["RF"].append(accuracy_score(y_test, rf_d_test))
             results_dict[data + "_acc"]["Platt"].append(accuracy_score(y_test, plat_d_test))
             results_dict[data + "_acc"]["ISO"].append(accuracy_score(y_test, iso_d_test))
             results_dict[data + "_acc"]["Rank"].append(accuracy_score(y_test, rank_d_test))
+            results_dict[data + "_acc"]["CRF"].append(accuracy_score(y_test, rank_d_test))
 
         if "auc" in metrics:
             fpr, tpr, thresholds = roc_curve(y_test, rf_p_test[:,1])

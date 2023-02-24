@@ -1,11 +1,16 @@
-from sklearn.ensemble import RandomForestClassifier
-import Data.data_provider as dp
-from sklearn.datasets import make_classification
+import numpy as np
 
-X, y = make_classification(n_samples=1000, n_features=4,n_informative=2, n_redundant=0,random_state=0, shuffle=False)
-clf = RandomForestClassifier(max_depth=2, random_state=0, oob_score=True)
-clf.fit(X, y)
-oob = clf.oob_decision_function_
-print("oob", oob)
-print("x", X.shape)
-print("oob", oob.shape)
+
+
+x = np.array([[1,2], [30,4]])
+
+max_index = np.argmax(x, axis=1)
+
+r = 5
+
+x[list(range(len(x))), max_index] += r
+
+print("x", x)
+print("max_index", max_index)
+
+x[_,_]
