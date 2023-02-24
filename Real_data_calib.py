@@ -102,14 +102,14 @@ for data in data_list:
         crf_p_test = crf_calib.predict(rf_p_test[:,1])
         crf_d_test = np.argmax(crf_p_test,axis=1)
 
-        print("crf_p_test", crf_p_test.shape)
-        exit()
+        # print("crf_p_test", crf_p_test)
+        # exit()
         if "acc" in metrics:
             results_dict[data + "_acc"]["RF"].append(accuracy_score(y_test, rf_d_test))
             results_dict[data + "_acc"]["Platt"].append(accuracy_score(y_test, plat_d_test))
             results_dict[data + "_acc"]["ISO"].append(accuracy_score(y_test, iso_d_test))
             results_dict[data + "_acc"]["Rank"].append(accuracy_score(y_test, rank_d_test))
-            results_dict[data + "_acc"]["CRF"].append(accuracy_score(y_test, rank_d_test))
+            results_dict[data + "_acc"]["CRF"].append(accuracy_score(y_test, crf_d_test))
 
         if "auc" in metrics:
             fpr, tpr, thresholds = roc_curve(y_test, rf_p_test[:,1])
@@ -120,18 +120,22 @@ for data in data_list:
             results_dict[data + "_auc"]["ISO"].append(auc(fpr, tpr))
             fpr, tpr, thresholds = roc_curve(y_test, rank_p_test[:,1])
             results_dict[data + "_auc"]["Rank"].append(auc(fpr, tpr))
+            fpr, tpr, thresholds = roc_curve(y_test, crf_p_test[:,1])
+            results_dict[data + "_auc"]["CRF"].append(auc(fpr, tpr))
 
         if "ece" in metrics:
             results_dict[data + "_ece"]["RF"].append(confidance_ECE(rf_p_test, y_test, bins=plot_bins))
             results_dict[data + "_ece"]["Platt"].append(confidance_ECE(plat_p_test, y_test, bins=plot_bins))
             results_dict[data + "_ece"]["ISO"].append(confidance_ECE(iso_p_test, y_test, bins=plot_bins))
             results_dict[data + "_ece"]["Rank"].append(confidance_ECE(rank_p_test, y_test, bins=plot_bins))
+            results_dict[data + "_ece"]["CRF"].append(confidance_ECE(crf_p_test, y_test, bins=plot_bins))
 
         if "brier" in metrics:
             results_dict[data + "_brier"]["RF"].append(brier_score_loss(y_test, rf_p_test[:,1]))
             results_dict[data + "_brier"]["Platt"].append(brier_score_loss(y_test,plat_p_test[:,1]))
             results_dict[data + "_brier"]["ISO"].append(brier_score_loss(y_test, iso_p_test[:,1]))
             results_dict[data + "_brier"]["Rank"].append(brier_score_loss(y_test, rank_p_test[:,1]))
+            results_dict[data + "_brier"]["CRF"].append(brier_score_loss(y_test, crf_p_test[:,1]))
 
         if plot:
             tp, pp = calibration_curve(y_test, rf_p_test[:,1], n_bins=plot_bins)

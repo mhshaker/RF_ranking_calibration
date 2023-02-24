@@ -17,7 +17,7 @@ class CRF_calib(BaseEstimator, ClassifierMixin):
 
     def predict(self, X):
 
-        self.r = self.sig.predict(X)
+        r = self.sig.predict(X)
         
         X_2d = convert_prob_2D(X)        
 
@@ -27,8 +27,8 @@ class CRF_calib(BaseEstimator, ClassifierMixin):
         max_indices = list(range(len(X_2d))), max_idx
         min_indices = list(range(len(X_2d))), min_idx
 
-        X_2d[max_indices] += self.r * (1-X_2d[max_indices])
-        X_2d[min_indices] *= (1-self.r)
+        X_2d[max_indices] += r * (1- X_2d[max_indices])
+        X_2d[min_indices] *= (1-r)
 
         y = X_2d
 
