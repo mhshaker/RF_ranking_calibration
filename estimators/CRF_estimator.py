@@ -7,8 +7,9 @@ from sklearn.metrics import brier_score_loss
 
 class CRF_calib(BaseEstimator, ClassifierMixin):
     
-    def __init__(self, r_step=0.1, learning_method='brier_opt'):
-
+    def __init__(self, r=0.5, r_step=0.1, learning_method='brier_opt'):
+        
+        self.r = r
         self.r_step = r_step
         self.learning_method = learning_method
 
