@@ -69,6 +69,23 @@ def confidance_ECE(probs, y_true, bins=10, equal_bin_size=True):
 
     return ece 
 
+def Reliability(probs, y_true, bins=10):
+    prob_max = np.max(probs, axis=1) # find the most probabil class
+    correctness_map = np.where(np.argmax(probs, axis=1)==y_true, 1, 0) # determine which predictions are correct
+    ece = 0
+
+    bin_size = 1/bins
+    for bin in range(bins):
+        bin_indexes = np.where((prob_max > bin * bin_size) & (prob_max <= (bin+1) * bin_size))[0]
+        if len(bin_indexes) > 0:
+            bin_conf = prob_max[bin_indexes].mean()
+            bin_acc = correctness_map[bin_indexes].sum() / len(bin_indexes)
+            dif = abs(bin_conf - bin_acc)
+            ece += dif * len(bin_indexes) / len(probs)  # difference times the number of instances in the bin divided by the total number of instances in the dataset
+
+    return ece 
+
+
 def convert_prob_2D(prob1D):
     prob_second_class = np.ones(len(prob1D)) - prob1D
     prob2D = np.concatenate((prob_second_class.reshape(-1,1), prob1D.reshape(-1,1)), axis=1)
