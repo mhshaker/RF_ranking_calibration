@@ -98,7 +98,7 @@ for data in data_list:
         rank_d_test = np.argmax(rank_p_test,axis=1)
 
         # CRF calibrator
-        crf_calib = CRF_calib().fit(rf_p_calib[:,1], y_calib)
+        crf_calib = CRF_calib(learning_method="sig_brior").fit(rf_p_calib[:,1], y_calib)
         crf_p_test = crf_calib.predict(rf_p_test[:,1])
         crf_d_test = np.argmax(crf_p_test,axis=1)
 
