@@ -3,22 +3,42 @@ from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from sklearn.calibration import _SigmoidCalibration
 from CalibrationM import convert_prob_2D
+from sklearn.metrics import brier_score_loss
 
 class CRF_calib(BaseEstimator, ClassifierMixin):
+    
+    # init 
+    # optimize step (input)
+    # learning method (input) sig / brier opt
 
     def fit(self, X, y): # X,y are calibration dataset
 
         # [Goal] set the value of "r"
         # learn _SigmoidCalibration "a" and "b"
         # optimize _SigmoidCalibration with brier_score_loss (from sklearn.metrics import brier_score_loss)
-        self.sig = _SigmoidCalibration().fit(X, y)
+        if self.brier_method:
+            r_list = [0, 0.1, 0.2 ... 1]
+            r_opt = 0
+            min_brier_score = 10000000
+            for r in r_list:
+                y_p = self.predict(X,r)
+                brier_score = brier_score_loss(y, y_p[:,1])
+                if brier_score < min_brier_score:
+                    min_brier_score = brier_score
+                    r_opt = r
+            self.r = r_opt
+        else:
+            self.sig = _SigmoidCalibration().fit(X, y)
         
         return self
 
-    def predict(self, X):
+    def predict(self, X, r=-1):
 
-        r = self.sig.predict(X)
-        
+        if self.sig_method:
+            r = self.sig.predict(X)
+        elif self.brier_method and r==-1:
+            r = self.r
+
         X_2d = convert_prob_2D(X)        
 
         max_idx = np.argmax(X_2d, axis=1)
