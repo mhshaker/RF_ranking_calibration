@@ -113,61 +113,27 @@ for seed in range(runs):
     results_dict[data + "_prob"]["CRF"] = crf_p_test
     results_dict[data + "_decision"]["CRF"] = np.argmax(crf_p_test,axis=1)
 
-    # print("crf_p_test", crf_p_test)
-    # exit()
     if "acc" in metrics:
         for method in calib_methods:
             results_dict[data + "_acc"][method].append(accuracy_score(y_test, results_dict[data + "_decision"][method]))
-        # results_dict[data + "_acc"]["Platt"].append(accuracy_score(y_test, plat_d_test))
-        # results_dict[data + "_acc"]["ISO"].append(accuracy_score(y_test, iso_d_test))
-        # results_dict[data + "_acc"]["Rank"].append(accuracy_score(y_test, rank_d_test))
-        # results_dict[data + "_acc"]["CRF"].append(accuracy_score(y_test, crf_d_test))
 
     if "auc" in metrics:
         for method in calib_methods:
             fpr, tpr, thresholds = roc_curve(y_test, results_dict[data + "_prob"][method][:,1])
             results_dict[data + "_auc"][method].append(auc(fpr, tpr))
-        # fpr, tpr, thresholds = roc_curve(y_test, rf_p_test[:,1])
-        # results_dict[data + "_auc"]["RF"].append(auc(fpr, tpr))
-        # fpr, tpr, thresholds = roc_curve(y_test, plat_p_test[:,1])
-        # results_dict[data + "_auc"]["Platt"].append(auc(fpr, tpr))
-        # fpr, tpr, thresholds = roc_curve(y_test, iso_p_test[:,1])
-        # results_dict[data + "_auc"]["ISO"].append(auc(fpr, tpr))
-        # fpr, tpr, thresholds = roc_curve(y_test, rank_p_test[:,1])
-        # results_dict[data + "_auc"]["Rank"].append(auc(fpr, tpr))
-        # fpr, tpr, thresholds = roc_curve(y_test, crf_p_test[:,1])
-        # results_dict[data + "_auc"]["CRF"].append(auc(fpr, tpr))
 
     if "ece" in metrics:
         for method in calib_methods:
             results_dict[data + "_ece"][method].append(confidance_ECE(results_dict[data + "_prob"][method], y_test, bins=plot_bins))
 
-        # results_dict[data + "_ece"]["RF"].append(confidance_ECE(rf_p_test, y_test, bins=plot_bins))
-        # results_dict[data + "_ece"]["Platt"].append(confidance_ECE(plat_p_test, y_test, bins=plot_bins))
-        # results_dict[data + "_ece"]["ISO"].append(confidance_ECE(iso_p_test, y_test, bins=plot_bins))
-        # results_dict[data + "_ece"]["Rank"].append(confidance_ECE(rank_p_test, y_test, bins=plot_bins))
-        # results_dict[data + "_ece"]["CRF"].append(confidance_ECE(crf_p_test, y_test, bins=plot_bins))
-
     if "brier" in metrics:
         for method in calib_methods:
             results_dict[data + "_brier"][method].append(brier_score_loss(y_test, results_dict[data + "_prob"][method][:,1]))
 
-        # results_dict[data + "_brier"]["RF"].append(brier_score_loss(y_test, rf_p_test[:,1]))
-        # results_dict[data + "_brier"]["Platt"].append(brier_score_loss(y_test,plat_p_test[:,1]))
-        # results_dict[data + "_brier"]["ISO"].append(brier_score_loss(y_test, iso_p_test[:,1]))
-        # results_dict[data + "_brier"]["Rank"].append(brier_score_loss(y_test, rank_p_test[:,1]))
-        # results_dict[data + "_brier"]["CRF"].append(brier_score_loss(y_test, crf_p_test[:,1]))
-
     if "tce" in metrics:
         for method in calib_methods:
             results_dict[data + "_tce"][method].append(mean_squared_error(tp_test, results_dict[data + "_prob"][method][:,1]))
-        
-        # results_dict[data + "_tce"]["RF"].append(true_calibration_error(tp_test, rf_p_test[:,1]))
-        # results_dict[data + "_tce"]["Platt"].append(true_calibration_error(tp_test,plat_p_test[:,1]))
-        # results_dict[data + "_tce"]["ISO"].append(true_calibration_error(tp_test, iso_p_test[:,1]))
-        # results_dict[data + "_tce"]["Rank"].append(true_calibration_error(tp_test, rank_p_test[:,1]))
-        # results_dict[data + "_tce"]["CRF"].append(true_calibration_error(tp_test, crf_p_test[:,1]))
-
+    
     if plot:
 
         for method in calib_methods:
