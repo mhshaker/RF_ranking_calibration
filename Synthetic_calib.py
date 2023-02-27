@@ -35,8 +35,8 @@ plot = True
 results_dict = {}
 
 seed = 0
-samples = 1000
-features = 20
+samples = 10000
+features = 40
 calib_methods = ["RF", "Platt" , "ISO", "Rank", "CRF"]
 metrics = ["acc"]
 
@@ -148,10 +148,15 @@ for seed in range(runs):
         # tp_irrf, pp_irrf = calibration_curve(y_test, rank_p_test, n_bins=plot_bins)
         
         plt.plot([0, 1], [0, 1], linestyle='--')
-        plt.scatter(tp_test, rf_p_test[:,0], marker='.', label="RF")
-        # plt.plot(tp_sig, pp_sig, marker='.', label="RF+sig")
-        # plt.plot(tp_iso, pp_iso, marker='.', label="RF+iso")
-        # plt.plot(tp_irrf, pp_irrf, marker='.', label="RF+rank+ios", c="black")
+        plt.scatter(tp_test, rf_p_test[:,1], marker='.', label="RF")
+        plt.xlabel("True probability")
+        plt.ylabel("Predicted probability")
+        plt.legend()
+        plt.show()
+
+
+        plt.plot([0, 1], [0, 1], linestyle='--')
+        plt.scatter(tp_test, plat_p_test[:,1], marker='.', c="green", label="RF")
         plt.xlabel("True probability")
         plt.ylabel("Predicted probability")
         plt.legend()

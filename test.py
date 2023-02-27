@@ -1,8 +1,16 @@
 import numpy as np
 import Data.data_provider as dp
+import matplotlib.pyplot as plt
 
 
-X, y, tp = dp.make_classification_with_true_prob(10, 4)
+samples = 10000
+features = 40
 
-print("tp", tp)
-print("y", y)
+
+X, y, tp = dp.make_classification_gaussian_with_true_prob(samples, features)
+
+plt.hist(tp, bins=100)
+plt.show()
+
+# print("tp", tp)
+# print("y", y)

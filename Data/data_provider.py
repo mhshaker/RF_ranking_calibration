@@ -212,19 +212,19 @@ def make_classification_gaussian_with_true_prob(n_samples, n_features, seed=0):
 
 	np.random.seed(seed)
 
-	mean1 = np.random.uniform(-1,1,n_features) #[0, 2, 3, -1, 9]
+	mean1 = np.random.uniform(0,1,n_features) #[0, 2, 3, -1, 9]
 	cov1 = np.zeros((n_features,n_features))
-	np.fill_diagonal(cov1, np.random.uniform(0,1,n_features))
+	np.fill_diagonal(cov1, np.random.uniform(1,2,n_features))
 
-	mean2 = np.random.uniform(-1,0,n_features) # [-1, 3, 0, 2, 3]
+	mean2 = np.random.uniform(0,1,n_features) # [-1, 3, 0, 2, 3]
 	cov2 = np.zeros((n_features,n_features))
-	np.fill_diagonal(cov2, np.random.uniform(0,1,n_features))
+	np.fill_diagonal(cov2, np.random.uniform(1,2,n_features))
 
 	x1 = np.random.multivariate_normal(mean1, cov1, n_samples)
 	x2 = np.random.multivariate_normal(mean2, cov2, n_samples)
 
 	X = np.concatenate([x1, x2])
-	true_prob = multivariate_normal.pdf(X, mean1, cov1) * 0.5 / (0.5 * multivariate_normal.pdf(X, mean1, cov1) + 0.5 * multivariate_normal.pdf(X, mean2, cov2))
+	true_prob = multivariate_normal.pdf(X, mean2, cov2) * 0.5 / (0.5 * multivariate_normal.pdf(X, mean1, cov1) + 0.5 * multivariate_normal.pdf(X, mean2, cov2))
 	y = np.concatenate([np.zeros(len(x1)), np.ones(len(x2))])
 	# tp = np.concatenate([x1_pdf_dif, x2_pdf_dif])
 
