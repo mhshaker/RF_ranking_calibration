@@ -13,11 +13,12 @@ from estimators.IR_RF_estimator import IR_RF
 from estimators.CRF_estimator import CRF_calib
 from sklearn.isotonic import IsotonicRegression
 from sklearn.calibration import calibration_curve
-from CalibrationM import confidance_ECE, convert_prob_2D, true_calibration_error
+from CalibrationM import confidance_ECE, convert_prob_2D
 import Data.data_provider as dp
 from sklearn.calibration import _SigmoidCalibration
 import matplotlib.pyplot as plt
 from sklearn.metrics import brier_score_loss
+from sklearn.metrics import mean_squared_error
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_curve, auc
 
@@ -38,9 +39,16 @@ seed = 0
 samples = 10000
 features = 40
 calib_methods = ["RF", "Platt" , "ISO", "Rank", "CRF"]
-metrics = ["acc"]
+metrics = ["acc", "auc", "brier", "ece", "tce"]
 
 data = "Synthetic"
+
+for res_val in ["prob", "decision"]:
+    _dict = {}
+    for method in calib_methods:
+        _dict[method] = []
+    results_dict[data + "_" + res_val] = _dict
+
 
 for metric in metrics:
     _dict = {}
@@ -73,17 +81,21 @@ for seed in range(runs):
     # random forest probs
     rf_p_calib = irrf.predict_proba(x_calib, laplace=1)
     rf_p_test = irrf.predict_proba(x_test, laplace=1)
-    rf_d_test = np.argmax(rf_p_test,axis=1)
+    results_dict[data + "_prob"]["RF"] = rf_p_test
+    results_dict[data + "_decision"]["RF"] = np.argmax(rf_p_test,axis=1)
 
     # Platt scaling on RF
     plat_calib = _SigmoidCalibration().fit(rf_p_calib[:,1], y_calib)
     plat_p_test = convert_prob_2D(plat_calib.predict(rf_p_test[:,1]))
-    plat_d_test = np.argmax(plat_p_test,axis=1)
+    results_dict[data + "_prob"]["Platt"] = plat_p_test
+    results_dict[data + "_decision"]["Platt"] = np.argmax(plat_p_test,axis=1)
 
     # ISO calibration on RF
     iso_calib = IsotonicRegression(out_of_bounds='clip').fit(rf_p_calib[:,1], y_calib)
     iso_p_test = convert_prob_2D(iso_calib.predict(rf_p_test[:,1]))
-    iso_d_test = np.argmax(iso_p_test,axis=1)
+    results_dict[data + "_prob"]["ISO"] = iso_p_test
+    results_dict[data + "_decision"]["ISO"] = np.argmax(iso_p_test,axis=1)
+
 
     # Ranking with the RF
     x_calib_rank = irrf.rank(x_calib, class_to_rank=1, train_rank=True)
@@ -92,85 +104,81 @@ for seed in range(runs):
     # RF ranking + ISO
     iso_rank = IsotonicRegression(out_of_bounds='clip').fit(x_calib_rank, y_calib) 
     rank_p_test = convert_prob_2D(iso_rank.predict(x_test_rank))
-    rank_d_test = np.argmax(rank_p_test,axis=1)
+    results_dict[data + "_prob"]["Rank"] = rank_p_test
+    results_dict[data + "_decision"]["Rank"] = np.argmax(rank_p_test,axis=1)
 
     # CRF calibrator
     crf_calib = CRF_calib(learning_method="sig_brior").fit(rf_p_calib[:,1], y_calib)
     crf_p_test = crf_calib.predict(rf_p_test[:,1])
-    crf_d_test = np.argmax(crf_p_test,axis=1)
+    results_dict[data + "_prob"]["CRF"] = crf_p_test
+    results_dict[data + "_decision"]["CRF"] = np.argmax(crf_p_test,axis=1)
 
     # print("crf_p_test", crf_p_test)
     # exit()
     if "acc" in metrics:
-        results_dict[data + "_acc"]["RF"].append(accuracy_score(y_test, rf_d_test))
-        results_dict[data + "_acc"]["Platt"].append(accuracy_score(y_test, plat_d_test))
-        results_dict[data + "_acc"]["ISO"].append(accuracy_score(y_test, iso_d_test))
-        results_dict[data + "_acc"]["Rank"].append(accuracy_score(y_test, rank_d_test))
-        results_dict[data + "_acc"]["CRF"].append(accuracy_score(y_test, crf_d_test))
+        for method in calib_methods:
+            results_dict[data + "_acc"][method].append(accuracy_score(y_test, results_dict[data + "_decision"][method]))
+        # results_dict[data + "_acc"]["Platt"].append(accuracy_score(y_test, plat_d_test))
+        # results_dict[data + "_acc"]["ISO"].append(accuracy_score(y_test, iso_d_test))
+        # results_dict[data + "_acc"]["Rank"].append(accuracy_score(y_test, rank_d_test))
+        # results_dict[data + "_acc"]["CRF"].append(accuracy_score(y_test, crf_d_test))
 
     if "auc" in metrics:
-        fpr, tpr, thresholds = roc_curve(y_test, rf_p_test[:,1])
-        results_dict[data + "_auc"]["RF"].append(auc(fpr, tpr))
-        fpr, tpr, thresholds = roc_curve(y_test, plat_p_test[:,1])
-        results_dict[data + "_auc"]["Platt"].append(auc(fpr, tpr))
-        fpr, tpr, thresholds = roc_curve(y_test, iso_p_test[:,1])
-        results_dict[data + "_auc"]["ISO"].append(auc(fpr, tpr))
-        fpr, tpr, thresholds = roc_curve(y_test, rank_p_test[:,1])
-        results_dict[data + "_auc"]["Rank"].append(auc(fpr, tpr))
-        fpr, tpr, thresholds = roc_curve(y_test, crf_p_test[:,1])
-        results_dict[data + "_auc"]["CRF"].append(auc(fpr, tpr))
+        for method in calib_methods:
+            fpr, tpr, thresholds = roc_curve(y_test, results_dict[data + "_prob"][method][:,1])
+            results_dict[data + "_auc"][method].append(auc(fpr, tpr))
+        # fpr, tpr, thresholds = roc_curve(y_test, rf_p_test[:,1])
+        # results_dict[data + "_auc"]["RF"].append(auc(fpr, tpr))
+        # fpr, tpr, thresholds = roc_curve(y_test, plat_p_test[:,1])
+        # results_dict[data + "_auc"]["Platt"].append(auc(fpr, tpr))
+        # fpr, tpr, thresholds = roc_curve(y_test, iso_p_test[:,1])
+        # results_dict[data + "_auc"]["ISO"].append(auc(fpr, tpr))
+        # fpr, tpr, thresholds = roc_curve(y_test, rank_p_test[:,1])
+        # results_dict[data + "_auc"]["Rank"].append(auc(fpr, tpr))
+        # fpr, tpr, thresholds = roc_curve(y_test, crf_p_test[:,1])
+        # results_dict[data + "_auc"]["CRF"].append(auc(fpr, tpr))
 
     if "ece" in metrics:
-        results_dict[data + "_ece"]["RF"].append(confidance_ECE(rf_p_test, y_test, bins=plot_bins))
-        results_dict[data + "_ece"]["Platt"].append(confidance_ECE(plat_p_test, y_test, bins=plot_bins))
-        results_dict[data + "_ece"]["ISO"].append(confidance_ECE(iso_p_test, y_test, bins=plot_bins))
-        results_dict[data + "_ece"]["Rank"].append(confidance_ECE(rank_p_test, y_test, bins=plot_bins))
-        results_dict[data + "_ece"]["CRF"].append(confidance_ECE(crf_p_test, y_test, bins=plot_bins))
+        for method in calib_methods:
+            results_dict[data + "_ece"][method].append(confidance_ECE(results_dict[data + "_prob"][method], y_test, bins=plot_bins))
+
+        # results_dict[data + "_ece"]["RF"].append(confidance_ECE(rf_p_test, y_test, bins=plot_bins))
+        # results_dict[data + "_ece"]["Platt"].append(confidance_ECE(plat_p_test, y_test, bins=plot_bins))
+        # results_dict[data + "_ece"]["ISO"].append(confidance_ECE(iso_p_test, y_test, bins=plot_bins))
+        # results_dict[data + "_ece"]["Rank"].append(confidance_ECE(rank_p_test, y_test, bins=plot_bins))
+        # results_dict[data + "_ece"]["CRF"].append(confidance_ECE(crf_p_test, y_test, bins=plot_bins))
 
     if "brier" in metrics:
-        results_dict[data + "_brier"]["RF"].append(brier_score_loss(y_test, rf_p_test[:,1]))
-        results_dict[data + "_brier"]["Platt"].append(brier_score_loss(y_test,plat_p_test[:,1]))
-        results_dict[data + "_brier"]["ISO"].append(brier_score_loss(y_test, iso_p_test[:,1]))
-        results_dict[data + "_brier"]["Rank"].append(brier_score_loss(y_test, rank_p_test[:,1]))
-        results_dict[data + "_brier"]["CRF"].append(brier_score_loss(y_test, crf_p_test[:,1]))
+        for method in calib_methods:
+            results_dict[data + "_brier"][method].append(brier_score_loss(y_test, results_dict[data + "_prob"][method][:,1]))
+
+        # results_dict[data + "_brier"]["RF"].append(brier_score_loss(y_test, rf_p_test[:,1]))
+        # results_dict[data + "_brier"]["Platt"].append(brier_score_loss(y_test,plat_p_test[:,1]))
+        # results_dict[data + "_brier"]["ISO"].append(brier_score_loss(y_test, iso_p_test[:,1]))
+        # results_dict[data + "_brier"]["Rank"].append(brier_score_loss(y_test, rank_p_test[:,1]))
+        # results_dict[data + "_brier"]["CRF"].append(brier_score_loss(y_test, crf_p_test[:,1]))
 
     if "tce" in metrics:
-        results_dict[data + "_tce"]["RF"].append(true_calibration_error(tp_test, rf_p_test[:,1]))
-        results_dict[data + "_tce"]["Platt"].append(true_calibration_error(tp_test,plat_p_test[:,1]))
-        results_dict[data + "_tce"]["ISO"].append(true_calibration_error(tp_test, iso_p_test[:,1]))
-        results_dict[data + "_tce"]["Rank"].append(true_calibration_error(tp_test, rank_p_test[:,1]))
-        results_dict[data + "_tce"]["CRF"].append(true_calibration_error(tp_test, crf_p_test[:,1]))
+        for method in calib_methods:
+            results_dict[data + "_tce"][method].append(mean_squared_error(tp_test, results_dict[data + "_prob"][method][:,1]))
+        
+        # results_dict[data + "_tce"]["RF"].append(true_calibration_error(tp_test, rf_p_test[:,1]))
+        # results_dict[data + "_tce"]["Platt"].append(true_calibration_error(tp_test,plat_p_test[:,1]))
+        # results_dict[data + "_tce"]["ISO"].append(true_calibration_error(tp_test, iso_p_test[:,1]))
+        # results_dict[data + "_tce"]["Rank"].append(true_calibration_error(tp_test, rank_p_test[:,1]))
+        # results_dict[data + "_tce"]["CRF"].append(true_calibration_error(tp_test, crf_p_test[:,1]))
 
     if plot:
-        # tp, pp = calibration_curve(y_test, rf_p_test[:,1], n_bins=plot_bins)
-        # tp_iso, pp_iso = calibration_curve(y_test, iso_p_test, n_bins=plot_bins)
-        # tp_sig, pp_sig = calibration_curve(y_test, plat_p_test, n_bins=plot_bins)
-        # tp_irrf, pp_irrf = calibration_curve(y_test, rank_p_test, n_bins=plot_bins)
-        
-        plt.plot([0, 1], [0, 1], linestyle='--')
-        plt.scatter(tp_test, rf_p_test[:,1], marker='.', label="RF")
-        plt.xlabel("True probability")
-        plt.ylabel("Predicted probability")
-        plt.legend()
-        plt.show()
 
+        for method in calib_methods:
+            plt.plot([0, 1], [0, 1], linestyle='--')
+            plt.scatter(tp_test, results_dict[data + "_prob"][method][:,1], marker='.', label=method)
+            plt.xlabel("True probability")
+            plt.ylabel("Predicted probability")
+            plt.legend()
+            plt.savefig(f"./results/Synthetic/{method}.png")
+            plt.close()
 
-        plt.plot([0, 1], [0, 1], linestyle='--')
-        plt.scatter(tp_test, plat_p_test[:,1], marker='.', c="green", label="RF")
-        plt.xlabel("True probability")
-        plt.ylabel("Predicted probability")
-        plt.legend()
-        plt.show()
-
-        # plt.hist(pp_iso, color="green")
-        # plt.ylabel("Count")
-        # plt.xlabel("Mean predicted probability")
-
-        # plt.show()
-        # plt.hist(pp,color="black")
-        # plt.ylabel("Count")
-        # plt.xlabel("Mean predicted probability")
-        # plt.show()
 print(f"data {data} done")
 
 # save results as txt
@@ -185,7 +193,7 @@ for metric in metrics:
     df = pd.read_csv(txt_data, sep=",")
     df.set_index('Data', inplace=True)
     mean_res = df.mean()
-    if metric == "ece" or metric == "brier":
+    if metric == "ece" or metric == "brier" or metric == "tce":
         df_rank = df.rank(axis=1, ascending = True)
     else:
         df_rank = df.rank(axis=1, ascending = False)

@@ -86,10 +86,6 @@ def Reliability(probs, y_true, bins=10):
 
     return ece 
 
-def true_calibration_error(probs, p_true):
-    return brier_score_loss(p_true, probs) 
-
-
 def convert_prob_2D(prob1D):
     prob_second_class = np.ones(len(prob1D)) - prob1D
     prob2D = np.concatenate((prob_second_class.reshape(-1,1), prob1D.reshape(-1,1)), axis=1)
