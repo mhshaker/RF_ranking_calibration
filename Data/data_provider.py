@@ -10,7 +10,7 @@ from sklearn.utils import resample
 from sklearn import preprocessing
 from scipy.io import arff
 from sklearn.datasets import make_blobs
-
+from sklearn.linear_model import LogisticRegression
 
 def unpickle(file): # for reading the CIFAR dataset
     import pickle
@@ -206,7 +206,8 @@ def load_arff_2(data_name):
 
 from scipy.stats import multivariate_normal
 
-def make_classification_with_true_prob(n_samples, n_features, n_classes=2, seed=0):
+def make_classification_gaussian_with_true_prob(n_samples, n_features, seed=0):
+	n_samples = int(n_samples / 2)
 	# Synthetic data with n_features dimentions and n_classes classes
 
 	np.random.seed(seed)
@@ -222,14 +223,12 @@ def make_classification_with_true_prob(n_samples, n_features, n_classes=2, seed=
 	x1 = np.random.multivariate_normal(mean1, cov1, n_samples)
 	x2 = np.random.multivariate_normal(mean2, cov2, n_samples)
 
-	x1_pdf_dif = multivariate_normal.pdf(x1, mean1, cov1) - multivariate_normal.pdf(x1, mean2, cov2)
-	x2_pdf_dif = multivariate_normal.pdf(x2, mean2, cov2) - multivariate_normal.pdf(x2, mean1, cov1)
-
 	X = np.concatenate([x1, x2])
+	true_prob = multivariate_normal.pdf(X, mean1, cov1) * 0.5 / (0.5 * multivariate_normal.pdf(X, mean1, cov1) + 0.5 * multivariate_normal.pdf(X, mean2, cov2))
 	y = np.concatenate([np.zeros(len(x1)), np.ones(len(x2))])
-	tp = np.concatenate([x1_pdf_dif, x2_pdf_dif])
+	# tp = np.concatenate([x1_pdf_dif, x2_pdf_dif])
 
-	return X, y, tp
+	return X, y, true_prob
 
 from sklearn.datasets import make_regression
 
@@ -246,3 +245,29 @@ def make_classification_with_true_prob3(n_samples, w=2, noise_mu=0, noise_sigma=
 
 	y = np.where(tp>0, 1, 0) # create classification labels by setting a threshold
 	return x.reshape(-1, 1), y, x
+
+def make_classification_with_true_prob_logestic(n_samples, n_features, mean_true_prob=0.8, std_true_prob= 0.2, seed=0):
+	np.random.seed(seed)
+
+	true_prob = np.random.normal(loc=mean_true_prob, scale=std_true_prob, size=n_samples)
+	true_prob = np.where(true_prob<0, 0, true_prob) # clip negetive values
+	true_prob = np.where(true_prob>1, 1, true_prob) # clip greater than 1
+
+	logit = np.log(true_prob / (1-true_prob))
+
+	mean1 = np.random.uniform(-1,1,n_features) #[0, 2, 3, -1, 9]
+	cov1 = np.zeros((n_features,n_features))
+	np.fill_diagonal(cov1, np.random.uniform(0,1,n_features))
+	X = np.random.multivariate_normal(mean1, cov1, n_samples)
+
+	beta_cof = np.random.uniform(-1,1,n_features)
+
+	alpha = logit - np.mean(beta_cof * X, axis=1)
+
+	y = []
+	for tp in true_prob:
+		y.append(np.random.binomial(1, tp , 1))
+	# logit = alpha + beta_cof * X
+	# true_prob = 1/(1 + np.exp(-logit))
+
+	return X, y, true_prob 

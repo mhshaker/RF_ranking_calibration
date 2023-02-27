@@ -56,8 +56,8 @@ for seed in range(runs):
     np.random.seed(seed)
 
     ### Synthetic data generation
-    # X, y, tp = dp.make_classification_with_true_prob(samples, 2 , seed)
-    X, y, tp = dp.make_classification_with_true_prob2(samples, n_features,2, seed)
+    X, y, tp = dp.make_classification_with_true_prob(samples, 2 , seed)
+    # X, y, tp = dp.make_classification_with_true_prob2(samples, n_features,2, seed)
    
     # X, y, tp = dp.make_classification_with_true_prob(n_features,2,samples, seed)
     if plot_data:

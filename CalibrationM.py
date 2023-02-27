@@ -1,5 +1,6 @@
 import numpy as np
 from math import isnan
+from sklearn.metrics import brier_score_loss
 
 def classwise_ECE(probs, y_true, bins=10, equal_bin_size=True, full_ece=False):
     
@@ -84,6 +85,9 @@ def Reliability(probs, y_true, bins=10):
             ece += dif * len(bin_indexes) / len(probs)  # difference times the number of instances in the bin divided by the total number of instances in the dataset
 
     return ece 
+
+def true_calibration_error(probs, p_true):
+    return brier_score_loss(p_true, probs) 
 
 
 def convert_prob_2D(prob1D):

@@ -22,7 +22,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_curve, auc
 
 runs = 10
-n_estimators=10
+n_estimators=100
 
 plot_bins = 10
 test_size = 0.3
