@@ -23,7 +23,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_curve, auc
 
 runs = 1
-n_estimators=10
+n_estimators=100
 
 plot_bins = 10
 test_size = 0.3
@@ -142,7 +142,7 @@ for seed in range(runs):
             plt.xlabel("True probability")
             plt.ylabel("Predicted probability")
             plt.legend()
-            plt.savefig(f"./results/Synthetic/{method}.png")
+            plt.savefig(f"./results/Synthetic/plots/{method}.png")
             plt.close()
 
 print(f"data {data} done")
@@ -167,6 +167,6 @@ for metric in metrics:
     mean_rank = df_rank.mean()
     df.loc["Mean"] = mean_res
     df.loc["Rank"] = mean_rank
-    df.to_csv(f"results/RealDataCalib_{metric}.csv",index=False)
+    df.to_csv(f"./results/Synthetic/sDataCalib_{metric}.csv",index=False)
     print("---------------------------------", metric)
     print(df)
