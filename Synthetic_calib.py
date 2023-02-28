@@ -23,7 +23,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_curve, auc
 
 runs = 1
-n_estimators=100
+n_estimators=10
 
 plot_bins = 10
 test_size = 0.3
@@ -35,7 +35,6 @@ plot = True
 
 results_dict = {}
 
-seed = 0
 samples = 10000
 features = 40
 calib_methods = ["RF", "Platt" , "ISO", "Rank", "CRF"]
@@ -165,8 +164,8 @@ for metric in metrics:
         df_rank = df.rank(axis=1, ascending = False)
 
     mean_rank = df_rank.mean()
-    df.loc["Mean"] = mean_res
+    # df.loc["Mean"] = mean_res
     df.loc["Rank"] = mean_rank
-    df.to_csv(f"./results/Synthetic/sDataCalib_{metric}.csv",index=False)
+    df.to_csv(f"./results/Synthetic/{data}_DataCalib_{metric}.csv",index=False)
     print("---------------------------------", metric)
     print(df)

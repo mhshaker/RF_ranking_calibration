@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 
 samples = 10000
-features = 40
+features = 20
 
 
 X, y, tp = dp.make_classification_gaussian_with_true_prob(samples, features)
