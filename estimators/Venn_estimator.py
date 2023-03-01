@@ -11,7 +11,6 @@ class Venn_calib():
         n_samples = len(preds)
         classes_map = {}
         max_lower, max_upper = [], []
-        final_probs = []
 
         # create a map
         # keys are classes
@@ -59,10 +58,14 @@ class Venn_calib():
     def predict(self, X):
         
         preds = np.argmax(X, axis=1)
+        preds = np.array(preds, dtype=float)
+
         classes = np.unique(preds)
+        classes = np.array(classes, dtype=int)
+
         probs = (self.l + self.u) / 2
 
         for c in classes:
             np.place(preds, preds==c, probs[c])
         
-        return probs
+        return preds
