@@ -185,6 +185,6 @@ for metric in metrics:
     mean_rank = df_rank.mean()
     df.loc["Mean"] = mean_res
     df.loc["Rank"] = mean_rank
-    df.to_csv(f"results/RealDataCalib_{metric}.csv",index=False)
+    df.to_csv(f"results/RealDataCalib_{metric}.csv",index=True)
     print("---------------------------------", metric)
     print(df)
