@@ -22,7 +22,7 @@ from sklearn.metrics import mean_squared_error
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_curve, auc
 
-runs = 10
+runs = 1
 n_estimators=100
 
 plot_bins = 10
@@ -32,12 +32,13 @@ test_size = 0.3
 oob = False
 
 plot = True
+save_results = False
 
 results_dict = {}
 
 samples = 10000
-features = 4
-calib_methods = ["RF", "Platt" , "ISO", "Rank", "CRF"]
+features = 40
+calib_methods = ["RF", "Platt" , "ISO", "Rank", "CRF", "p_rank"]
 metrics = ["acc", "auc", "brier", "ece", "tce"]
 
 run_name = "laplace"
@@ -111,6 +112,13 @@ for exp in [0]:#[2,5,10,20,40,80,100]:
         results_dict[data + "_prob"]["Rank"] = rank_p_test
         results_dict[data + "_decision"]["Rank"] = np.argmax(rank_p_test,axis=1)
 
+        # perfect rank + ISO
+        iso_rank = IsotonicRegression(out_of_bounds='clip').fit(tp_calib, y_calib) 
+        rank_p_test = convert_prob_2D(iso_rank.predict(tp_test))
+        results_dict[data + "_prob"]["p_rank"] = rank_p_test
+        results_dict[data + "_decision"]["p_rank"] = np.argmax(rank_p_test,axis=1)
+
+
         # CRF calibrator
         crf_calib = CRF_calib(learning_method="sig_brior").fit(rf_p_calib[:,1], y_calib)
         crf_p_test = crf_calib.predict(rf_p_test[:,1])
@@ -174,6 +182,7 @@ for metric in metrics:
     mean_rank = df_rank.mean()
     df.loc["Mean"] = mean_res
     df.loc["Rank"] = mean_rank
-    df.to_csv(f"./results/Synthetic/{data}_DataCalib_{metric}.csv",index=True)
+    if save_results:
+        df.to_csv(f"./results/Synthetic/{data}_DataCalib_{metric}.csv",index=True)
     print("---------------------------------", metric)
     print(df)

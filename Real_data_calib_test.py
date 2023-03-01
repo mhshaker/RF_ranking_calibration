@@ -76,6 +76,10 @@ for data in data_list:
 
         venn = Venn_calib()
         venn.fit(rf_p_calib, y_calib)
+<<<<<<< HEAD
+=======
+        print("rf_p_test", rf_p_test.shape)
+>>>>>>> b151452d284c163adced695666b78cae4c8a7735
         probs = venn.predict(rf_p_test)
         
         print(probs)
