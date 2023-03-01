@@ -97,8 +97,17 @@ class Venn_calib():
 
         return self
     
+    
     def predict(self, X):
-        return (self.l + self.u) / 2
+        
+        preds = np.argmax(X, axis=1)
+        classes = np.unique(preds)
+        probs = (self.l + self.u) / 2
+
+        for c in classes:
+            np.place(preds, preds==c, probs[c])
+        
+        return probs
         
 
 for data in data_list:
