@@ -22,8 +22,8 @@ from sklearn.metrics import mean_squared_error
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_curve, auc
 
-runs = 1
-n_estimators=10
+runs = 10
+n_estimators=100
 
 plot_bins = 10
 test_size = 0.3
@@ -36,16 +36,17 @@ plot = True
 results_dict = {}
 
 samples = 10000
-features = 40
+features = 4
 calib_methods = ["RF", "Platt" , "ISO", "Rank", "CRF"]
 metrics = ["acc", "auc", "brier", "ece", "tce"]
 
-run_name = "Synthetic"
+run_name = "laplace"
 
 
-
-for exp in [2,5,10,20,40,80,100]:
+data_list = []
+for exp in [0]:#[2,5,10,20,40,80,100]:
     data = run_name + str(exp)
+    data_list.append(data)
 
     for res_val in ["prob", "decision"]:
         _dict = {}
@@ -64,7 +65,7 @@ for exp in [2,5,10,20,40,80,100]:
         # seed = 5
         # print("seed ", seed)
         np.random.seed(seed)
-        X, y, tp = dp.make_classification_gaussian_with_true_prob(samples, features , seed)
+        X, y, tp = dp.make_classification_gaussian_with_true_prob(samples, features, seed)
 
         ### spliting data to train calib and test
         x_train_calib, x_test, y_train_calib, y_test = train_test_split(X, y, test_size=test_size, shuffle=True, random_state=seed)
@@ -76,14 +77,14 @@ for exp in [2,5,10,20,40,80,100]:
         # exit()
 
         ### training the IRRF
-        irrf = IR_RF(n_estimators=exp, oob_score=oob, random_state=seed)
+        irrf = IR_RF(n_estimators=n_estimators, oob_score=oob, random_state=seed)
         irrf.fit(x_train, y_train)
 
         ### calibration and ECE plot
 
         # random forest probs
-        rf_p_calib = irrf.predict_proba(x_calib, laplace=1)
-        rf_p_test = irrf.predict_proba(x_test, laplace=1)
+        rf_p_calib = irrf.predict_proba(x_calib, laplace=exp)
+        rf_p_test = irrf.predict_proba(x_test, laplace=exp)
         results_dict[data + "_prob"]["RF"] = rf_p_test
         results_dict[data + "_decision"]["RF"] = np.argmax(rf_p_test,axis=1)
 
@@ -155,9 +156,12 @@ for metric in metrics:
     txt = "Data"
     for method in calib_methods:
         txt += "," + method
-    txt += "\n"+ data
-    for method in calib_methods:
-        txt += "," + str(np.array(results_dict[data+ "_" +metric][method]).mean())
+
+    for data in data_list:
+        txt += "\n"+ data
+        for method in calib_methods:
+            txt += "," + str(np.array(results_dict[data+ "_" +metric][method]).mean())
+
     txt_data = StringIO(txt)
     df = pd.read_csv(txt_data, sep=",")
     df.set_index('Data', inplace=True)
@@ -168,8 +172,8 @@ for metric in metrics:
         df_rank = df.rank(axis=1, ascending = False)
 
     mean_rank = df_rank.mean()
-    # df.loc["Mean"] = mean_res
+    df.loc["Mean"] = mean_res
     df.loc["Rank"] = mean_rank
-    df.to_csv(f"./results/Synthetic/{data}_DataCalib_{metric}.csv",index=False)
+    df.to_csv(f"./results/Synthetic/{data}_DataCalib_{metric}.csv",index=True)
     print("---------------------------------", metric)
     print(df)
