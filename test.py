@@ -13,4 +13,10 @@ array = np.array([4,2,7,1,80])
 order = array.argsort()
 ranks = order.argsort()
 
-print("", ranks)
+X, y, tp = dp.make_classification_gaussian_with_true_prob(samples, features)
+
+plt.hist(tp, bins=100)
+plt.show()
+
+# print("tp", tp)
+# print("y", y)
