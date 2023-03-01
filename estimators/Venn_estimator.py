@@ -4,10 +4,11 @@ import heapq
 
 class Venn_calib():
 
-    def Venn_predictor(preds, labels):
-
+    def fit(self, X, y):
+        
+        preds = np.argmax(X, axis=1)
         classes = np.unique(preds)
-        n_test_samples = len(preds)
+        n_samples = len(preds)
         classes_map = {}
         max_lower, max_upper = [], []
         final_probs = []
@@ -18,8 +19,8 @@ class Venn_calib():
         for c in classes:
             classes_map[c] = []
 
-        for i in range(n_test_samples):
-            classes_map[preds[i]].append((preds[i], labels[i]))
+        for i in range(n_samples):
+            classes_map[preds[i]].append((preds[i], y[i]))
 
         # iterate on pairs of each class and compute lower and upper for it
         for pairs in classes_map.values():
@@ -49,8 +50,10 @@ class Venn_calib():
             max_lower.append(lower[-1])
             max_upper.append(upper[-1])
 
-            # compute final prob using upper and lower
-            final_prob = (lower[-1] + upper[-1]) / 2
-            final_probs.append(final_prob)
+        self.l = np.asarray(max_lower)
+        self.u = np.asarray(max_upper)
 
-        return np.asarray(final_probs)
+        return self
+    
+    def predict(self, X):
+        return (self.l + self.u) / 2
