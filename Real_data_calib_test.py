@@ -76,6 +76,7 @@ for data in data_list:
 
         venn = Venn_calib()
         venn.fit(rf_p_calib, y_calib)
-        probs = venn.predict(rf_p_calib)
+        print("rf_p_test", rf_p_test.shape)
+        probs = venn.predict(rf_p_test)
         
         print(probs)
