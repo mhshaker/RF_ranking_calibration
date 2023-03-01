@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import brier_score_loss
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_curve, auc
+import heapq
 
 runs = 1
 n_estimators=100
@@ -47,33 +48,52 @@ def Venn_predictor(preds, labels):
 
     classes = np.unique(preds)
     n_test_samples = len(preds)
-    pred_label_pairs = []
+    classes_map = {}
+    max_lower, max_upper = [], []
+    final_probs = []
 
+    # create a map
+    # keys are classes
+    # values ore lists of (prediction,label) pairs
     for c in classes:
-        c_pred_label_pairs = []
-        for i in range(n_test_samples):
-            if preds[i] == c:
-                c_pred_label_pairs.append((preds[i], labels[i]))
-        pred_label_pairs.append(c_pred_label_pairs)
+        classes_map[c] = []
 
-    lower = []
-    upper = []
+    for i in range(n_test_samples):
+        classes_map[preds[i]].append((preds[i], labels[i]))
 
-    for c in classes:
-        for cl in classes:
-            cnt = 0
-            for pair in pred_label_pairs[c]:
-                label = pair[1]
-                if label == cl:
-                    cnt += 1
-            
-            low = cnt / (len(pred_label_pairs[c])+1)
-            up = cnt+1 / (len(pred_label_pairs[c])+1)
-            
+    # iterate on pairs of each class and compute lower and upper for it
+    for pairs in classes_map.values():
+
+        lower = []
+        upper = []
+        labels_count = {}
+        
+        for c in classes:
+            labels_count[c] = 0
+
+        for pair in pairs:
+            labels_count[pair[1]] += 1
+
+        for c in classes:
+
+            low = labels_count[c] / (len(pairs)+1)
+            up = (labels_count[c]+1) / (len(pairs)+1)
+
             lower.append(low)
-            upper.append(up)
+            upper.append(up)  
 
-    return lower, upper
+        heapq.heapify(lower)
+        heapq.heapify(upper)  
+
+        # get the maximum prob for each class
+        max_lower.append(lower[-1])
+        max_upper.append(upper[-1])
+
+        # compute final prob using upper and lower
+        final_prob = (lower[-1] + upper[-1]) / 2
+        final_probs.append(final_prob)
+
+    return np.asarray(final_probs)
 
 for data in data_list:
 
@@ -103,5 +123,5 @@ for data in data_list:
         rf_p_test = irrf.predict_proba(x_test, laplace=1)
         rf_d_test = np.argmax(rf_p_test,axis=1)
 
-        lower, upper = Venn_predictor(preds=rf_d_test, labels=y_test)
-        print(f'lowers: {lower} \nuppers: {upper}')
+        probs = Venn_predictor(preds=rf_d_test, labels=y_test)
+        print(f'probs: {probs}')
