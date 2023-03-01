@@ -22,7 +22,7 @@ from sklearn.metrics import mean_squared_error
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_curve, auc
 
-runs = 1
+runs = 10
 n_estimators=100
 
 plot_bins = 10
@@ -62,12 +62,13 @@ for exp in [0]:#[2,5,10,20,40,80,100]:
             _dict[method] = []
         results_dict[data + "_" + metric] = _dict
 
+    X, y, tp = dp.make_classification_gaussian_with_true_prob(samples, features, 0)
+
     for seed in range(runs):
         # seed = 5
         # print("seed ", seed)
         np.random.seed(seed)
-        X, y, tp = dp.make_classification_gaussian_with_true_prob(samples, features, seed)
-
+        
         ### spliting data to train calib and test
         x_train_calib, x_test, y_train_calib, y_test = train_test_split(X, y, test_size=test_size, shuffle=True, random_state=seed)
         x_train, x_calib, y_train, y_calib = train_test_split(x_train_calib, y_train_calib, test_size=0.5, shuffle=True, random_state=seed) 
@@ -102,11 +103,12 @@ for exp in [0]:#[2,5,10,20,40,80,100]:
         results_dict[data + "_decision"]["ISO"] = np.argmax(iso_p_test,axis=1)
 
 
-        # Ranking with the RF
+        # RF ranking + ISO
         x_calib_rank = irrf.rank(x_calib, class_to_rank=1, train_rank=True)
         x_test_rank = irrf.rank_refrence(x_test, class_to_rank=1)
+        # print("x_test_rank\n", x_test_rank)
+        # exit()
 
-        # RF ranking + ISO
         iso_rank = IsotonicRegression(out_of_bounds='clip').fit(x_calib_rank, y_calib) 
         rank_p_test = convert_prob_2D(iso_rank.predict(x_test_rank))
         results_dict[data + "_prob"]["Rank"] = rank_p_test
@@ -154,7 +156,7 @@ for exp in [0]:#[2,5,10,20,40,80,100]:
                 plt.xlabel("True probability")
                 plt.ylabel("Predicted probability")
                 plt.legend()
-                plt.savefig(f"./results/Synthetic/plots/{data}_{method}.png")
+                plt.savefig(f"./results/Synthetic/plots/{seed}_{data}_{method}.png")
                 plt.close()
 
     print(f"data {data} done")

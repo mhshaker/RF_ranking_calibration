@@ -54,19 +54,16 @@ class IR_RF(RandomForestClassifier):
     
     def rank(self, X, class_to_rank=1, train_rank=False, return_tree_rankings=False):
         probs = self.predict_proba(X, laplace=1, return_tree_prob=True)[:,:,class_to_rank]
-        # print("prob shape\n", probs)
         count = self.tree_leafcounts(X, laplace=1)[:,:,class_to_rank] # not probs but the number of instances in the leafs of the trees
-        # print("count shape\n", count)
         probs *= count
-        # print("prob * count shape\n", probs)
-
-
-        if train_rank:
-            self.refrence_prob = np.sort(probs, axis=1) # np.sort(probs, axis=0, kind="stable")
 
         order = np.argsort(probs, axis=0, kind="stable")
         order = order.transpose([1,0]) 
         ranks = order.argsort(axis=1)
+        
+        if train_rank:
+            probs = probs.transpose([1,0])
+            self.refrence_prob = np.sort(probs, axis=1) # np.sort(probs, axis=0, kind="stable")
 
         IR_RF_rank = ranks.sum(axis=0) / self.n_estimators
 
@@ -74,8 +71,9 @@ class IR_RF(RandomForestClassifier):
             return ranks
         else:
             return IR_RF_rank
-
+        
     def rank_refrence(self, X, class_to_rank=1): # find where X fals in the ranking of calib data
+
         probs = self.predict_proba(X, laplace=1, return_tree_prob=True)[:,:,class_to_rank]
         count = self.tree_leafcounts(X, laplace=1)[:,:,class_to_rank] # not probs but the number of instances in the leafs of the trees
         probs *= count
