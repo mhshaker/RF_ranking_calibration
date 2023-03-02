@@ -29,4 +29,4 @@ class VA_calib(BaseEstimator, ClassifierMixin):
 
         p0, p1 = np.array(p0).flatten(),np.array(p1).flatten()
 
-        return p0, p1
+        return np.concatenate((p0.reshape(-1,1), p1.reshape(-1,1)), axis=1)

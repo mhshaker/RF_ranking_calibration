@@ -15,6 +15,7 @@ from estimators.IR_RF_estimator import IR_RF
 from estimators.CRF_estimator import CRF_calib
 from estimators.Elkan_estimator import Elkan_calib
 from estimators.Venn_estimator import Venn_calib
+from estimators.VA_estimator import VA_calib
 from sklearn.isotonic import IsotonicRegression
 from sklearn.calibration import _SigmoidCalibration
 from betacal import BetaCalibration
@@ -42,14 +43,14 @@ results_dict = {}
 
 samples = 10000
 features = 40
-calib_methods = ["RF", "Platt" , "ISO", "Rank", "CRF", "p_rank", "Venn", "Beta", "Elkan"]
+calib_methods = ["RF", "Platt" , "ISO", "Rank", "CRF", "p_rank", "Venn", "VA", "Beta", "Elkan"]
 metrics = ["acc", "auc", "brier", "ece", "tce"]
 
-run_name = "laplace"
+run_name = "Samples"
 
 
 data_list = []
-for exp in [0]:#[2,5,10,20,40,80,100]:
+for exp in [10000]: #[100, 200, 500, 1000, 2000, 5000, 10000, 50000]:#[2,5,10,20,40,80,100]:
     data = run_name + str(exp)
     data_list.append(data)
 
@@ -66,7 +67,7 @@ for exp in [0]:#[2,5,10,20,40,80,100]:
             _dict[method] = []
         results_dict[data + "_" + metric] = _dict
 
-    X, y, tp = dp.make_classification_gaussian_with_true_prob(samples, features, 0)
+    X, y, tp = dp.make_classification_gaussian_with_true_prob(exp, features, 0)
 
     for seed in range(runs):
         # seed = 5
@@ -89,8 +90,8 @@ for exp in [0]:#[2,5,10,20,40,80,100]:
         ### calibration and ECE plot
 
         # random forest probs
-        rf_p_calib = irrf.predict_proba(x_calib, laplace=exp)
-        rf_p_test = irrf.predict_proba(x_test, laplace=exp)
+        rf_p_calib = irrf.predict_proba(x_calib, laplace=1)
+        rf_p_test = irrf.predict_proba(x_test, laplace=1)
         results_dict[data + "_prob"]["RF"] = rf_p_test
         results_dict[data + "_decision"]["RF"] = np.argmax(rf_p_test,axis=1)
 
@@ -132,9 +133,16 @@ for exp in [0]:#[2,5,10,20,40,80,100]:
 
         # Venn calibrator
         ven_calib = Venn_calib().fit(rf_p_calib, y_calib)
-        ven_p_test = convert_prob_2D(ven_calib.predict(rf_p_test))
+        ven_p_test = ven_calib.predict(rf_p_test)
         results_dict[data + "_prob"]["Venn"] = ven_p_test
         results_dict[data + "_decision"]["Venn"] = np.argmax(ven_p_test,axis=1)
+
+        # Venn abers
+        VA = VA_calib().fit(rf_p_calib[:,1], y_calib)
+        va_p_test = VA.predict(rf_p_test[:,1])
+        results_dict[data + "_prob"]["VA"] = va_p_test
+        results_dict[data + "_decision"]["VA"] = np.argmax(va_p_test,axis=1)
+
 
         # Beta calibration
         beta_calib = BetaCalibration(parameters="abm").fit(rf_p_calib[:,1], y_calib)
@@ -176,7 +184,7 @@ for exp in [0]:#[2,5,10,20,40,80,100]:
 
             for method in calib_methods:
                 plt.plot([0, 1], [0, 1], linestyle='--')
-                plt.scatter(tp_test, results_dict[data + "_prob"][method][:,1], marker='.', label=method)
+                plt.scatter(tp_test, results_dict[data + "_prob"][method][:,1], marker='.', c=y_test, label=method)
                 plt.xlabel("True probability")
                 plt.ylabel("Predicted probability")
                 plt.legend()
