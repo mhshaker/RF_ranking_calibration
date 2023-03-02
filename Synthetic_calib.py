@@ -8,21 +8,25 @@ import numpy as np
 np.set_printoptions(edgeitems=30, linewidth=100000, 
     formatter=dict(float=lambda x: "%.3g" % x))
 import pandas as pd
+import Data.data_provider as dp
+import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from estimators.IR_RF_estimator import IR_RF
 from estimators.CRF_estimator import CRF_calib
+from estimators.Elkan_estimator import Elkan_calib
+from estimators.Venn_estimator import Venn_calib
 from sklearn.isotonic import IsotonicRegression
-from sklearn.calibration import calibration_curve
-from CalibrationM import confidance_ECE, convert_prob_2D
-import Data.data_provider as dp
 from sklearn.calibration import _SigmoidCalibration
-import matplotlib.pyplot as plt
+from betacal import BetaCalibration
+
+from CalibrationM import confidance_ECE, convert_prob_2D
 from sklearn.metrics import brier_score_loss
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_curve, auc
+from sklearn.calibration import calibration_curve
 
-runs = 10
+runs = 1
 n_estimators=100
 
 plot_bins = 10
@@ -38,7 +42,7 @@ results_dict = {}
 
 samples = 10000
 features = 40
-calib_methods = ["RF", "Platt" , "ISO", "Rank", "CRF", "p_rank"]
+calib_methods = ["RF", "Platt" , "ISO", "Rank", "CRF", "p_rank", "Venn", "Beta", "Elkan"]
 metrics = ["acc", "auc", "brier", "ece", "tce"]
 
 run_name = "laplace"
@@ -120,12 +124,32 @@ for exp in [0]:#[2,5,10,20,40,80,100]:
         results_dict[data + "_prob"]["p_rank"] = rank_p_test
         results_dict[data + "_decision"]["p_rank"] = np.argmax(rank_p_test,axis=1)
 
-
         # CRF calibrator
         crf_calib = CRF_calib(learning_method="sig_brior").fit(rf_p_calib[:,1], y_calib)
         crf_p_test = crf_calib.predict(rf_p_test[:,1])
         results_dict[data + "_prob"]["CRF"] = crf_p_test
         results_dict[data + "_decision"]["CRF"] = np.argmax(crf_p_test,axis=1)
+
+        # Venn calibrator
+        ven_calib = Venn_calib().fit(rf_p_calib, y_calib)
+        ven_p_test = convert_prob_2D(ven_calib.predict(rf_p_test))
+        results_dict[data + "_prob"]["Venn"] = ven_p_test
+        results_dict[data + "_decision"]["Venn"] = np.argmax(ven_p_test,axis=1)
+
+        # Beta calibration
+        beta_calib = BetaCalibration(parameters="abm").fit(rf_p_calib[:,1], y_calib)
+        beta_p_test = convert_prob_2D(beta_calib.predict(rf_p_test[:,1]))
+        results_dict[data + "_prob"]["Beta"] = beta_p_test
+        results_dict[data + "_decision"]["Beta"] = np.argmax(beta_p_test,axis=1)
+
+        # Elkan calibration
+        elkan_calib = Elkan_calib().fit(y_train, y_calib)
+        elkan_p_test = elkan_calib.predict(rf_p_test[:,1])
+        results_dict[data + "_prob"]["Elkan"] = elkan_p_test
+        results_dict[data + "_decision"]["Elkan"] = np.argmax(elkan_p_test,axis=1)
+
+
+
 
         if "acc" in metrics:
             for method in calib_methods:
