@@ -11,17 +11,22 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from estimators.IR_RF_estimator import IR_RF
 from estimators.CRF_estimator import CRF_calib
+from estimators.Elkan_estimator import Elkan_calib
+from estimators.Venn_estimator import Venn_calib
+from estimators.VA_estimator import VA_calib
 from sklearn.isotonic import IsotonicRegression
+from sklearn.calibration import _SigmoidCalibration
+from betacal import BetaCalibration
+
 from sklearn.calibration import calibration_curve
 from CalibrationM import confidance_ECE, convert_prob_2D, classwise_ECE
 import Data.data_provider as dp
-from sklearn.calibration import _SigmoidCalibration
 import matplotlib.pyplot as plt
 from sklearn.metrics import brier_score_loss
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_curve, auc
 
-runs = 10
+runs = 1
 n_estimators=100
 
 plot_bins = 10
@@ -39,7 +44,7 @@ plot = False
 results_dict = {}
 
 seed = 0
-calib_methods = ["RF", "Platt" , "ISO", "Rank", "CRF"]
+calib_methods = ["RF", "Platt" , "ISO", "Rank", "CRF", "VA", "Beta", "Elkan"]
 metrics = ["acc", "auc", "brier", "ece"]
 data_list = ["spambase", "climate", "QSAR", "bank", "climate", "parkinsons", "vertebral", "ionosphere", "diabetes", "breast", "blod"]
 # data_list = ["parkinsons", "vertebral"]
@@ -47,6 +52,12 @@ data_list = ["spambase", "climate", "QSAR", "bank", "climate", "parkinsons", "ve
 for data in data_list:
 
     X, y = dp.load_data(data)
+
+    for res_val in ["prob", "decision"]:
+        _dict = {}
+        for method in calib_methods:
+            _dict[method] = []
+        results_dict[data + "_" + res_val] = _dict
 
     for metric in metrics:
         _dict = {}
@@ -76,66 +87,80 @@ for data in data_list:
         # random forest probs
         rf_p_calib = irrf.predict_proba(x_calib, laplace=1)
         rf_p_test = irrf.predict_proba(x_test, laplace=1)
-        rf_d_test = np.argmax(rf_p_test,axis=1)
+        results_dict[data + "_prob"]["RF"] = rf_p_test
+        results_dict[data + "_decision"]["RF"] = np.argmax(rf_p_test,axis=1)
 
         # Platt scaling on RF
         plat_calib = _SigmoidCalibration().fit(rf_p_calib[:,1], y_calib)
         plat_p_test = convert_prob_2D(plat_calib.predict(rf_p_test[:,1]))
-        plat_d_test = np.argmax(plat_p_test,axis=1)
+        results_dict[data + "_prob"]["Platt"] = plat_p_test
+        results_dict[data + "_decision"]["Platt"] = np.argmax(plat_p_test,axis=1)
 
         # ISO calibration on RF
         iso_calib = IsotonicRegression(out_of_bounds='clip').fit(rf_p_calib[:,1], y_calib)
         iso_p_test = convert_prob_2D(iso_calib.predict(rf_p_test[:,1]))
-        iso_d_test = np.argmax(iso_p_test,axis=1)
+        results_dict[data + "_prob"]["ISO"] = iso_p_test
+        results_dict[data + "_decision"]["ISO"] = np.argmax(iso_p_test,axis=1)
 
-        # Ranking with the RF
-        x_calib_rank = irrf.rank(x_calib, class_to_rank=1, train_rank=True)
-        x_test_rank = irrf.rank_refrence(x_test, class_to_rank=1)
 
         # RF ranking + ISO
+        x_calib_rank = irrf.rank(x_calib, class_to_rank=1, train_rank=True)
+        x_test_rank = irrf.rank_refrence(x_test, class_to_rank=1)
+        # print("x_test_rank\n", x_test_rank)
+        # exit()
+
         iso_rank = IsotonicRegression(out_of_bounds='clip').fit(x_calib_rank, y_calib) 
         rank_p_test = convert_prob_2D(iso_rank.predict(x_test_rank))
-        rank_d_test = np.argmax(rank_p_test,axis=1)
+        results_dict[data + "_prob"]["Rank"] = rank_p_test
+        results_dict[data + "_decision"]["Rank"] = np.argmax(rank_p_test,axis=1)
 
         # CRF calibrator
         crf_calib = CRF_calib(learning_method="sig_brior").fit(rf_p_calib[:,1], y_calib)
         crf_p_test = crf_calib.predict(rf_p_test[:,1])
-        crf_d_test = np.argmax(crf_p_test,axis=1)
+        results_dict[data + "_prob"]["CRF"] = crf_p_test
+        results_dict[data + "_decision"]["CRF"] = np.argmax(crf_p_test,axis=1)
 
-        # print("crf_p_test", crf_p_test)
-        # exit()
+        # # Venn calibrator
+        # ven_calib = Venn_calib().fit(rf_p_calib, y_calib)
+        # ven_p_test = ven_calib.predict(rf_p_test)
+        # results_dict[data + "_prob"]["Venn"] = ven_p_test
+        # results_dict[data + "_decision"]["Venn"] = np.argmax(ven_p_test,axis=1)
+
+        # Venn abers
+        VA = VA_calib().fit(rf_p_calib[:,1], y_calib)
+        va_p_test = VA.predict(rf_p_test[:,1])
+        results_dict[data + "_prob"]["VA"] = va_p_test
+        results_dict[data + "_decision"]["VA"] = np.argmax(va_p_test,axis=1)
+
+
+        # Beta calibration
+        beta_calib = BetaCalibration(parameters="abm").fit(rf_p_calib[:,1], y_calib)
+        beta_p_test = convert_prob_2D(beta_calib.predict(rf_p_test[:,1]))
+        results_dict[data + "_prob"]["Beta"] = beta_p_test
+        results_dict[data + "_decision"]["Beta"] = np.argmax(beta_p_test,axis=1)
+
+        # Elkan calibration
+        elkan_calib = Elkan_calib().fit(y_train, y_calib)
+        elkan_p_test = elkan_calib.predict(rf_p_test[:,1])
+        results_dict[data + "_prob"]["Elkan"] = elkan_p_test
+        results_dict[data + "_decision"]["Elkan"] = np.argmax(elkan_p_test,axis=1)
+
         if "acc" in metrics:
-            results_dict[data + "_acc"]["RF"].append(accuracy_score(y_test, rf_d_test))
-            results_dict[data + "_acc"]["Platt"].append(accuracy_score(y_test, plat_d_test))
-            results_dict[data + "_acc"]["ISO"].append(accuracy_score(y_test, iso_d_test))
-            results_dict[data + "_acc"]["Rank"].append(accuracy_score(y_test, rank_d_test))
-            results_dict[data + "_acc"]["CRF"].append(accuracy_score(y_test, crf_d_test))
+            for method in calib_methods:
+                results_dict[data + "_acc"][method].append(accuracy_score(y_test, results_dict[data + "_decision"][method]))
 
         if "auc" in metrics:
-            fpr, tpr, thresholds = roc_curve(y_test, rf_p_test[:,1])
-            results_dict[data + "_auc"]["RF"].append(auc(fpr, tpr))
-            fpr, tpr, thresholds = roc_curve(y_test, plat_p_test[:,1])
-            results_dict[data + "_auc"]["Platt"].append(auc(fpr, tpr))
-            fpr, tpr, thresholds = roc_curve(y_test, iso_p_test[:,1])
-            results_dict[data + "_auc"]["ISO"].append(auc(fpr, tpr))
-            fpr, tpr, thresholds = roc_curve(y_test, rank_p_test[:,1])
-            results_dict[data + "_auc"]["Rank"].append(auc(fpr, tpr))
-            fpr, tpr, thresholds = roc_curve(y_test, crf_p_test[:,1])
-            results_dict[data + "_auc"]["CRF"].append(auc(fpr, tpr))
+            for method in calib_methods:
+                fpr, tpr, thresholds = roc_curve(y_test, results_dict[data + "_prob"][method][:,1])
+                results_dict[data + "_auc"][method].append(auc(fpr, tpr))
 
         if "ece" in metrics:
-            results_dict[data + "_ece"]["RF"].append(confidance_ECE(rf_p_test, y_test, bins=plot_bins))
-            results_dict[data + "_ece"]["Platt"].append(confidance_ECE(plat_p_test, y_test, bins=plot_bins))
-            results_dict[data + "_ece"]["ISO"].append(confidance_ECE(iso_p_test, y_test, bins=plot_bins))
-            results_dict[data + "_ece"]["Rank"].append(confidance_ECE(rank_p_test, y_test, bins=plot_bins))
-            results_dict[data + "_ece"]["CRF"].append(confidance_ECE(crf_p_test, y_test, bins=plot_bins))
+            for method in calib_methods:
+                results_dict[data + "_ece"][method].append(confidance_ECE(results_dict[data + "_prob"][method], y_test, bins=plot_bins))
 
         if "brier" in metrics:
-            results_dict[data + "_brier"]["RF"].append(brier_score_loss(y_test, rf_p_test[:,1]))
-            results_dict[data + "_brier"]["Platt"].append(brier_score_loss(y_test,plat_p_test[:,1]))
-            results_dict[data + "_brier"]["ISO"].append(brier_score_loss(y_test, iso_p_test[:,1]))
-            results_dict[data + "_brier"]["Rank"].append(brier_score_loss(y_test, rank_p_test[:,1]))
-            results_dict[data + "_brier"]["CRF"].append(brier_score_loss(y_test, crf_p_test[:,1]))
+            for method in calib_methods:
+                results_dict[data + "_brier"][method].append(brier_score_loss(y_test, results_dict[data + "_prob"][method][:,1]))
 
         if plot:
             tp, pp = calibration_curve(y_test, rf_p_test[:,1], n_bins=plot_bins)
