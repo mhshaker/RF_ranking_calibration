@@ -10,7 +10,7 @@ class Venn_calib():
         classes = np.unique(preds)
         n_samples = len(preds)
         classes_map = {}
-        max_lower, max_upper = [], []
+        # max_lower, max_upper = [], []
 
         # create a map
         # keys are classes
@@ -19,13 +19,14 @@ class Venn_calib():
             classes_map[c] = []
 
         for i in range(n_samples):
-            classes_map[preds[i]].append((preds[i], y[i]))
+            classes_map[preds[i]].append((preds[i],y[i]))
+
+        lower = []
+        upper = []
 
         # iterate on pairs of each class and compute lower and upper for it
         for pairs in classes_map.values():
 
-            lower = []
-            upper = []
             labels_count = {}
             
             for c in classes:
@@ -42,30 +43,35 @@ class Venn_calib():
                 lower.append(low)
                 upper.append(up)  
 
-            heapq.heapify(lower)
-            heapq.heapify(upper)  
+            # heapq.heapify(lower)
+            # heapq.heapify(upper)  
 
-            # get the maximum prob for each class
-            max_lower.append(lower[-1])
-            max_upper.append(upper[-1])
+            # # get the maximum prob for each class
+            # max_lower.append(lower[-1])
+            # max_upper.append(upper[-1])
 
-        self.l = np.asarray(max_lower)
-        self.u = np.asarray(max_upper)
+        self.l = np.asarray(lower)
+        self.u = np.asarray(upper)
 
         return self
     
     
-    def predict(self, X):
+    def prediction(self, X, y):
         
         preds = np.argmax(X, axis=1)
         preds = np.array(preds, dtype=float)
 
         classes = np.unique(preds)
-        classes = np.array(classes, dtype=int)
+        # classes = np.array(classes, dtype=int)
 
-        probs = (self.l + self.u) / 2
+        probs = (self.l + self.u) / 2 
 
-        for c in classes:
-            np.place(preds, preds==c, probs[c])
+        n_samples = len(preds)
+        n_classes = len(classes)
+        prob_preds = np.copy(preds)
+
+        for i in range(n_samples):
+            idx = int(n_classes*preds[i] + y[i])
+            prob_preds[i] = probs[idx]
         
-        return preds
+        return prob_preds

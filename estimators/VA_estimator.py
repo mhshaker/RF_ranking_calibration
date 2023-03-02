@@ -7,21 +7,26 @@ from sklearn.isotonic import IsotonicRegression
 
 class VA_calib(BaseEstimator, ClassifierMixin):
     
-    def predict(train, test):
+    def fit(self, X, y):
+
+        self.dataset = list(zip(X,y))
+        return self
+    
+
+    def predict(self, X):
 
         p0, p1 = [], []
 
-        for x in test:
-            train0 = train + [(x,0)]
-            iso0 = IsotonicRegression().fit(*zip(*train0))
+        for x in X:
+
+            dataset0 = self.dataset + [(x,0)]
+            iso0 = IsotonicRegression().fit(*zip(*dataset0))
             p0.append(iso0.predict([x]))
             
-            train1 = train + [(x,1)]
-            iso1 = IsotonicRegression().fit(*zip(*train1))
+            dataset1 = self.dataset + [(x,1)]
+            iso1 = IsotonicRegression().fit(*zip(*dataset1))
             p1.append(iso1.predict([x]))
 
-        flatenned_p0, flattened_p1 = np.array(p0).flatten(), np.array(p1).flatten()
-        
-        return flatenned_p0, flattened_p1
-        # how to call
-        # p0d,p1d = VennABERS_by_def(list(zip(xs,ys)), xtest)
+        p0, p1 = np.array(p0).flatten(),np.array(p1).flatten()
+
+        return p0, p1
