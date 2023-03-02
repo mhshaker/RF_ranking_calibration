@@ -20,7 +20,6 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import brier_score_loss
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_curve, auc
-import heapq
 from estimators.Venn_estimator import Venn_calib
 
 runs = 1
@@ -76,15 +75,6 @@ for data in data_list:
 
         venn = Venn_calib()
         venn.fit(rf_p_calib, y_calib)
-<<<<<<< HEAD
-        probs = venn.prediction(rf_p_test, y_test)
-        print(rf_d_test)
-        print(y_test)
-        print(probs)
-=======
-        print("rf_p_test", rf_p_test.shape)
         probs = venn.predict(rf_p_test)
-        
-        print(probs)
-        print(len(probs))
->>>>>>> d5cc2b4f2b174ad203a05f74db2870958c48ae7d
+
+        print(probs.shape)
