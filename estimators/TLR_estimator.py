@@ -8,7 +8,7 @@ class treeLR_calib(BaseEstimator, ClassifierMixin):
     remove_refrence_node = True
     retrain_alpha = True
     
-    def convert_data_to_lr(self, tree, X, all_leafs=np.zeros(10), ref_index=-1, remove_refrence_node=True):
+    def convert_data_to_lr(self, tree, X, all_leafs=np.zeros(10), ref_index=-1, remove_refrence_node=False):
         leaf_index_array = tree.apply(X) # get leaf index for each data in X_train
         if all_leafs.all() == 0:
             all_leafs = np.array(range(tree.tree_.node_count)) # list of all leafs in the tree
@@ -40,10 +40,10 @@ class treeLR_calib(BaseEstimator, ClassifierMixin):
             self.tree_leaf_list.append(leafs)
             self.ref_index.append(ref)
             # train LR
-            tlr = LogisticRegression(random_state=0).fit(lr_x_train, y_train)
+            # tlr = LogisticRegression(random_state=0).fit(lr_x_train, y_train)
 
             # retrain alpha with calib data
-            # tlr = LogisticRegression(random_state=0).fit(lr_x_calib, y_calib)
+            tlr = LogisticRegression(random_state=0).fit(lr_x_calib, y_calib)
             self.lr_list.append(tlr)
 
         return self
