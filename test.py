@@ -1,8 +1,7 @@
-import Data.data_provider as dp
-import numpy as np
 
-x = np.array([1,0,0,0,0,1])
-y = np.array([1,2,2,2,2,10])
+d1 = {"x":5, "y":6}
+d2 = {"a":50, "b":60}
 
-for i ,j in zip(x,y):
-    print(f"x {i} y {j}")
+dd = d1.update(d2)
+
+print("dict", d1)
