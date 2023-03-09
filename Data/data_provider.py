@@ -20,74 +20,9 @@ def unpickle(file): # for reading the CIFAR dataset
 
 
 
-def load_data(data_name):   
-	if data_name == "sim":
-		features, targets = make_blobs(n_samples=2000, n_features=3, centers=2, random_state=42, cluster_std=5.0)
-		return features, targets
-	elif data_name == "CIFAR10":
-		features = []
-		targets = []
-		for i in ["1", "2", "3", "4", "5", "test"]:
-			d = unpickle(f"Data/cifar-10-batches-py/data_batch_{i}")
-			features.append(d[b'data'])
-			targets.append(d[b'labels'])
+def load_data(data_name, path="."):   
 
-		features = np.array(features)
-		features = np.reshape(features, (-1, features.shape[-1]))
-		targets = np.reshape(np.array(targets), (-1,))
-		return features, targets
-	elif data_name == "CIFAR100":
-		features = []
-		targets = []
-		for i in ["train", "test"]:
-			d = unpickle(f"Data/cifar-100-python/{i}")
-			f = d[b'data']
-			# print(d.keys())
-			features.append(np.array(d[b'data']))
-			targets.append(np.array(d[b'fine_labels']))
-
-		features = np.concatenate((features[0], features[1]))
-		targets = np.concatenate((targets[0], targets[1]))
-		return features, targets
-	elif data_name == 'amazon_movie':
-		import classes.io as iox
-		io = iox.Io('./')
-
-		# Identifiers of dataset
-		dataset_id = 'amazon-movie-reviews-10000'
-		descriptor = io.DESCRIPTOR_DOC_TO_VEC
-		details = 'dim50-epochs50'
-
-		# [My note] a -> 1 star. b -> 5 star. First dimention is the key [0] and the text [1]. Second dimention is the index of documents
-
-		# Load data text
-		texts = io.load_data_pair(dataset_id, io.DATATYPE_TEXT)
-
-		# Load data embeddings
-		embeddings = io.load_data_pair(dataset_id, io.DATATYPE_EMBEDDINGS, descriptor, details)
-
-		# create the dataset (with targets including the keys)
-		class_1 = np.array(embeddings.get_a_dict_as_lists()[1]) # get the embeddings (features) for class 1 star
-		class_5 = np.array(embeddings.get_b_dict_as_lists()[1]) # get the embeddings (features) for class 5 star
-
-		target_1_label = np.zeros(len(class_1)).reshape((-1,1))
-		target_5_label = np.ones(len(class_5)).reshape((-1,1))
-		target_1_key = np.array(embeddings.get_a_dict_as_lists()[0]).reshape((-1,1)) # get the keys (part of target but not the label) for class 1 star
-		target_5_key = np.array(embeddings.get_b_dict_as_lists()[0]).reshape((-1,1)) # get the keys for class 5 star
-
-		target_1 = np.concatenate((target_1_label,target_1_key), axis=1)
-		target_5 = np.concatenate((target_5_label,target_5_key), axis=1)
-
-		features = np.concatenate((class_1,class_5))
-		targets = np.concatenate((target_1,target_5))
-		targets = targets[:,0]
-		return features, targets
-
-	if data_name == "Jdata/dbpedia":
-		features, target = datasets.load_svmlight_file("Data/Jdata/dbpedia_train.svm")
-
-
-	df = pd.read_csv(f'./Data/{data_name}.csv')
+	df = pd.read_csv(f'{path}/Data/{data_name}.csv')
 	features = np.array(df.drop("Class", axis=1))
 	target = np.array(df["Class"])
 
