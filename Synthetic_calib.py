@@ -28,8 +28,8 @@ from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_curve, auc
 from sklearn.calibration import calibration_curve
 
-runs = 1
-n_estimators=100
+runs = 5
+n_estimators=10
 
 plot_bins = 10
 test_size = 0.3
@@ -43,16 +43,16 @@ save_results = False
 results_dict = {}
 
 samples = 3000
-features = 40
-calib_methods = ["RF", "Platt" , "ISO", "Rank", "CRF", "p_rank", "Venn", "VA", "Beta", "Elkan", "tlr"]
+features = 4
+calib_methods = ["RF", "Platt" , "ISO", "Rank", "CRF", "VA", "Beta", "Elkan", "tlr"] # "prank", "Venn"
 # calib_methods = ["RF", "tlr"]
-metrics = ["acc", "auc", "brier", "ece", "tce"]
+metrics = ["acc", "auc", "brier", "ece"] # , "tce"
 
 run_name = "Samples"
 
 
 data_list = []
-for exp in [10000]: #[100, 200, 500, 1000, 2000, 5000, 10000, 50000]:#[2,5,10,20,40,80,100]:
+for exp in [30]: #[100, 200, 500, 1000, 2000, 5000, 10000, 50000]:#[2,5,10,20,40,80,100]:
     data = run_name + str(exp)
     data_list.append(data)
 
@@ -234,3 +234,5 @@ for metric in metrics:
         df.to_csv(f"./results/Synthetic/{data}_DataCalib_{metric}.csv",index=True)
     print("---------------------------------", metric)
     print(df)
+
+print(results_dict)

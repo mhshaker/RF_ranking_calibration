@@ -27,7 +27,7 @@ from sklearn.metrics import brier_score_loss
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_curve, auc
 
-runs = 5
+runs = 100
 n_estimators=100
 
 plot_bins = 10
@@ -48,7 +48,7 @@ seed = 0
 calib_methods = ["RF", "Platt" , "ISO", "Rank", "CRF", "VA", "Beta", "Elkan", "tlr"]
 metrics = ["acc", "auc", "brier", "ece"]
 data_list = ["spambase", "climate", "QSAR", "bank", "climate", "parkinsons", "vertebral", "ionosphere", "diabetes", "breast", "blod"]
-# data_list = ["parkinsons", "vertebral"]
+data_list = ["spambase", "climate"]
 
 for data in data_list:
 
@@ -115,13 +115,6 @@ for data in data_list:
             rank_p_test = convert_prob_2D(iso_rank.predict(x_test_rank))
             results_dict[data + "_prob"]["Rank"] = rank_p_test
             results_dict[data + "_decision"]["Rank"] = np.argmax(rank_p_test,axis=1)
-
-        # perfect rank + ISO
-        if "p_rank" in calib_methods:
-            iso_rank = IsotonicRegression(out_of_bounds='clip').fit(tp_calib, y_calib) 
-            rank_p_test = convert_prob_2D(iso_rank.predict(tp_test))
-            results_dict[data + "_prob"]["p_rank"] = rank_p_test
-            results_dict[data + "_decision"]["p_rank"] = np.argmax(rank_p_test,axis=1)
 
         # CRF calibrator
         if "CRF" in calib_methods:
