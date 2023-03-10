@@ -1,16 +1,8 @@
 
-d1 = {"g":[5], "c":[6]}
-d2 = {"a":[50], "b":[60]}
+import numpy as np
 
-dd = d1.update(d2)
+x = np.array([1,2,3,4,45,5,5])
 
-print("dd", d1)
+c = np.unique(x)
 
-# for k in d1.keys():
-#   d2[k] = d1[k] + d2[k]
-
-# print("dict", d2)
-
-# d3 = d2.copy()
-
-# print("d3", d3)
+print("c", c)

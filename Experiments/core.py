@@ -209,6 +209,7 @@ def update_runs(ref_dict, new_dict):
 
 def mean_and_ranking_table(results_dict, metrics, calib_methods, data_list):
     # save results as txt
+    df_dict = {}
     res = ""
     for metric in metrics:
         txt = "Data"
@@ -224,7 +225,7 @@ def mean_and_ranking_table(results_dict, metrics, calib_methods, data_list):
         df = pd.read_csv(txt_data, sep=",")
         df.set_index('Data', inplace=True)
         mean_res = df.mean()
-        if metric == "ece" or metric == "brier" or metric == "tce":
+        if metric == "ece" or metric == "brier" or metric == "tce" or metric == "logloss":
             df_rank = df.rank(axis=1, ascending = True)
         else:
             df_rank = df.rank(axis=1, ascending = False)
@@ -232,54 +233,22 @@ def mean_and_ranking_table(results_dict, metrics, calib_methods, data_list):
         mean_rank = df_rank.mean()
         df.loc["Mean"] = mean_res
         df.loc["Rank"] = mean_rank
+        df_dict[metric] = df
         if save_results:
             df.to_csv(f"./results/Synthetic/{data}_DataCalib_{metric}.csv",index=True)
-        print("---------------------------------", metric)
-        print(df)
+        # print("---------------------------------", metric)
+        # print(df)
         res += f"--------------------------------- {metric}\n"
         res += str(df)
-    return res
+    return df_dict
 
-
-
-###################################################################################################################################################
-
-# data_list = []
-# for exp in [10000]: #[100, 200, 500, 1000, 2000, 5000, 10000, 50000]:#[2,5,10,20,40,80,100]:
-#     data = run_name + str(exp)
-#     data_list.append(data)
-
-
-#     X, y, tp = dp.make_classification_gaussian_with_true_prob(exp, features, 0)
-
-#     for seed in range(runs):
-#         # seed = 5
-#         # print("seed ", seed)
-#         np.random.seed(seed)
-        
-#         ### spliting data to train calib and test
-#         x_train, x_calib, x_test, y_train, y_calib, y_test, tp_train, tp_calib, tp_test = split_train_calib_test(X, y, tp, test_size, 0.5, seed)
-
-#         # print("tp_test ", tp_test.shape)
-#         # exit()
-
-#         ### training the IRRF
-#         irrf = IR_RF(n_estimators=n_estimators, oob_score=oob, random_state=seed)
-#         irrf.fit(x_train, y_train)
-
-#         ### calibration and ECE plot
-
-        
-#         if plot:
-
-#             for method in calib_methods:
-#                 plt.plot([0, 1], [0, 1], linestyle='--')
-#                 plt.scatter(tp_test, results_dict[data + "_prob"][method][:,1], marker='.', c=y_test, label=method)
-#                 plt.xlabel("True probability")
-#                 plt.ylabel("Predicted probability")
-#                 plt.legend()
-#                 plt.savefig(f"./results/Synthetic/plots/{seed}_{data}_{method}.png")
-#                 plt.close()
-
-#     print(f"data {data} done")
-
+def exp_mean_rank_through_time(exp_df_all, exp_df, exp_value, value="rank", exp_test="Calibration"):
+    value_index = -1
+    if value == "mean":
+        value_index = -2
+    for k in exp_df.keys():
+        table = exp_df[k]
+        calib_values = table.iloc[value_index].to_dict()
+        calib_values[exp_test] = exp_value
+        exp_df_all[k] = pd.concat([exp_df_all[k], (pd.DataFrame([calib_values]))])
+    return exp_df_all
