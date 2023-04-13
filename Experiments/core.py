@@ -30,29 +30,29 @@ from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_curve, auc
 from sklearn.calibration import calibration_curve
 
-### Parameters
+# ### Parameters
 
-runs = 1
-n_estimators=100
+# runs = 1
+# n_estimators=100
 
-plot_bins = 10
-test_size = 0.3
+# plot_bins = 10
+# test_size = 0.3
 
 
-oob = False
+# oob = False
 
-plot = True
-save_results = False
+# plot = True
+# save_results = False
 
-results_dict = {}
+# results_dict = {}
 
-samples = 3000
-features = 40
-calib_methods = ["RF", "Platt" , "ISO", "Rank", "CRF", "prank", "Venn", "VA", "Beta", "Elkan", "tlr"]
-# calib_methods = ["RF", "tlr"]
-metrics = ["acc", "auc", "brier", "ece", "tce"]
+# samples = 3000
+# features = 40
+# calib_methods = ["RF", "Platt" , "ISO", "Rank", "CRF", "prank", "Venn", "VA", "Beta", "Elkan", "tlr"]
+# # calib_methods = ["RF", "tlr"]
+# metrics = ["acc", "auc", "brier", "ece", "tce"]
 
-run_name = "Samples"
+# run_name = "Samples"
 
 
 def split_train_calib_test(name, X, y, test_size, calib_size, seed=0, tp=np.zeros(10)):
@@ -70,15 +70,11 @@ def split_train_calib_test(name, X, y, test_size, calib_size, seed=0, tp=np.zero
         data = {"name":name, "x_train": x_train, "x_calib":x_calib, "x_test":x_test, "y_train":y_train, "y_calib":y_calib, "y_test":y_test, "tp_train":tp_train, "tp_calib":tp_calib, "tp_test":tp_test}
     return data
 
-def calibration(RF, data, calib_methods, metrics):
+def calibration(RF, data, calib_methods, metrics, plot_bins = 10):
 
-    # for res_val in ["prob", "decision"]:
-    #     _dict = {}
-    #     for method in calib_methods:
-    #         _dict[method] = []
-    #     results_dict[data["name"] + "_" + res_val] = _dict
-
-
+    # the retuen is a dict with all the metrics results as well as RF probs and every calibration method decision for every test data point
+    # the structure of the keys in the dict is data_calibMethod_metric
+    results_dict = {}
     for metric in metrics:
         for method in calib_methods:
             results_dict[data["name"] + "_" + method + "_" + metric] = []
@@ -193,21 +189,31 @@ def calibration(RF, data, calib_methods, metrics):
 
 def update_runs(ref_dict, new_dict):
 
-    # print("---------------------------------")
-    # print("new_dict", new_dict)
+    # calib results for every run for the same dataset is aggregated in this function 
+    # (ex. acc of every run will be available as an array with the data_calibMethod_metric key)
+    # the _prob and _decision keys in the returned result is not meaningfull
 
     if ref_dict == {}:
-        return new_dict.copy()
+        res_dict = new_dict.copy()
+        for k in new_dict.keys():
+            if "_prob" in k or "_decision" in k:
+                del res_dict[k]
+                continue
+        return res_dict
     
     res_dict = ref_dict.copy()
-    for k in new_dict.keys():
+    # print("new_dict keys", len(new_dict.keys()))
+    # print("res_dict keys", len(res_dict.keys()))
+    # print("---------------------------------")
+    for k in ref_dict.keys():
         if "_prob" in k or "_decision" in k:
+            del res_dict[k]
             continue
         res_dict[k] = ref_dict[k] + new_dict[k]
 
     return res_dict    
 
-def mean_and_ranking_table(results_dict, metrics, calib_methods, data_list):
+def mean_and_ranking_table(results_dict, metrics, calib_methods, data_list, save_results=False, mean_and_rank=True):
     # save results as txt
     df_dict = {}
     res = ""
@@ -231,8 +237,9 @@ def mean_and_ranking_table(results_dict, metrics, calib_methods, data_list):
             df_rank = df.rank(axis=1, ascending = False)
 
         mean_rank = df_rank.mean()
-        df.loc["Mean"] = mean_res
-        df.loc["Rank"] = mean_rank
+        if mean_and_rank:
+            df.loc["Mean"] = mean_res
+            df.loc["Rank"] = mean_rank
         df_dict[metric] = df
         if save_results:
             df.to_csv(f"./results/Synthetic/{data}_DataCalib_{metric}.csv",index=True)
