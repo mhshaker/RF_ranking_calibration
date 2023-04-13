@@ -1,8 +1,7 @@
+dict1 = {1: "one", 2: "two", 3: "three", 4: "four"}
 
-import numpy as np
+print("dict", dict1)
 
-x = np.array([1,2,3,4,45,5,5])
+del dict1[1]
 
-c = np.unique(x)
-
-print("c", c)
+print("dict", dict1)
