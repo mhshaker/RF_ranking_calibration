@@ -213,7 +213,7 @@ def update_runs(ref_dict, new_dict):
 
     return res_dict    
 
-def mean_and_ranking_table(results_dict, metrics, calib_methods, data_list, save_results=False, mean_and_rank=True):
+def mean_and_ranking_table(results_dict, metrics, calib_methods, data_list, save_results=False, mean_and_rank=True, std=False):
     # save results as txt
     df_dict = {}
     res = ""
@@ -230,14 +230,29 @@ def mean_and_ranking_table(results_dict, metrics, calib_methods, data_list, save
         txt_data = StringIO(txt)
         df = pd.read_csv(txt_data, sep=",")
         df.set_index('Data', inplace=True)
-        mean_res = df.mean()
-        if metric == "ece" or metric == "brier" or metric == "tce" or metric == "logloss":
-            df_rank = df.rank(axis=1, ascending = True)
-        else:
-            df_rank = df.rank(axis=1, ascending = False)
 
-        mean_rank = df_rank.mean()
+        if std:
+            txt = "Data"
+            for method in calib_methods:
+                txt += "," + method + "_std"
+
+            for data in data_list:
+                txt += "\n"+ data
+                for method in calib_methods:
+                    txt += "," + str(np.array(results_dict[data+ "_" + method + "_"+ metric]).std())
+
+            txt_data = StringIO(txt)
+            df_std = pd.read_csv(txt_data, sep=",")
+            df_std.set_index('Data', inplace=True)
+            df_dict[metric + "_std"] = df_std
         if mean_and_rank:
+            mean_res = df.mean()
+            if metric == "ece" or metric == "brier" or metric == "tce" or metric == "logloss":
+                df_rank = df.rank(axis=1, ascending = True)
+            else:
+                df_rank = df.rank(axis=1, ascending = False)
+
+            mean_rank = df_rank.mean()
             df.loc["Mean"] = mean_res
             df.loc["Rank"] = mean_rank
         df_dict[metric] = df
@@ -247,6 +262,7 @@ def mean_and_ranking_table(results_dict, metrics, calib_methods, data_list, save
         # print(df)
         res += f"--------------------------------- {metric}\n"
         res += str(df)
+        
     return df_dict
 
 def exp_mean_rank_through_time(exp_df_all, exp_df, exp_value, value="rank", exp_test="Calibration"):
