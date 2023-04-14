@@ -70,7 +70,7 @@ def split_train_calib_test(name, X, y, test_size, calib_size, seed=0, tp=np.zero
         data = {"name":name, "x_train": x_train, "x_calib":x_calib, "x_test":x_test, "y_train":y_train, "y_calib":y_calib, "y_test":y_test, "tp_train":tp_train, "tp_calib":tp_calib, "tp_test":tp_test}
     return data
 
-def calibration(RF, data, calib_methods, metrics, plot_bins = 10):
+def calibration(RF, data, calib_methods, metrics, plot_bins = 10, laplace=1):
 
     # the retuen is a dict with all the metrics results as well as RF probs and every calibration method decision for every test data point
     # the structure of the keys in the dict is data_calibMethod_metric
@@ -80,8 +80,8 @@ def calibration(RF, data, calib_methods, metrics, plot_bins = 10):
             results_dict[data["name"] + "_" + method + "_" + metric] = []
 
     # random forest probs
-    rf_p_calib = RF.predict_proba(data["x_calib"], laplace=1)
-    rf_p_test = RF.predict_proba(data["x_test"], laplace=1)
+    rf_p_calib = RF.predict_proba(data["x_calib"], laplace=laplace)
+    rf_p_test = RF.predict_proba(data["x_test"], laplace=laplace)
     results_dict[data["name"] + "_RF_prob"] = rf_p_test
     results_dict[data["name"] + "_RF_decision"] = np.argmax(rf_p_test,axis=1)
 
