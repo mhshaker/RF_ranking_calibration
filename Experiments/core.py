@@ -275,3 +275,32 @@ def exp_mean_rank_through_time(exp_df_all, exp_df, exp_value, value="rank", exp_
         calib_values[exp_test] = exp_value
         exp_df_all[k] = pd.concat([exp_df_all[k], (pd.DataFrame([calib_values]))])
     return exp_df_all
+
+def plot_probs(exp_data_name, probs, data, calib_methods, run_index, hist_plot=True):
+    for method in calib_methods:
+        # plt.plot([0, 1], [0, 1], linestyle='--')
+        # colors = ['r', 'b']
+        # plt.scatter(data[\"tp_test\"], res[f\"{exp_data_name}_{method}_prob\"][:,1], marker='.', c=[colors[c] for c in data[\"y_test\"].astype(int)], label=['Class 0', 'Class 1'])
+        # plt.xlabel(\"True probability\")
+        # plt.ylabel(\"Predicted probability\")
+        # plt.legend()
+        fig, ax = plt.subplots()
+        colors = ['black', 'red']
+        scatter = ax.scatter(data["tp_test"], probs[f"{exp_data_name}_{method}_prob"][:,1], c=[colors[c] for c in data["y_test"].astype(int)])
+        # produce a legend with the unique colors from the scatter
+        legend1 = ax.legend('Class 0', 'Class 1',loc="upper left", title="Classes")
+        ax.plot([0, 1], [0, 1], linestyle='--')
+        ax.add_artist(legend1)
+        plt.xlabel("True probability")
+        plt.ylabel("Predicted probability")
+        path = f"../../results/Synthetic/plots/{run_index}/{method}"
+        if not os.path.exists(path):
+            os.makedirs(path)
+        plt.savefig(f"{path}/{method}_{exp_data_name}.png")
+        plt.close()
+        if hist_plot:
+            plt.hist(probs[f"{exp_data_name}_{method}_prob"][:,1], bins=50)
+            plt.savefig(f"{path}/{method}_{exp_data_name}_hist.png")
+            plt.close()
+
+
