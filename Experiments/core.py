@@ -1,6 +1,6 @@
 
 ### Impots
-
+import os
 import sys
 if sys.version_info[0] < 3: 
     from StringIO import StringIO
@@ -85,12 +85,16 @@ def calibration(RF, data, calib_methods, metrics, plot_bins = 10, laplace=1):
     results_dict[data["name"] + "_RF_prob"] = rf_p_test
     results_dict[data["name"] + "_RF_decision"] = np.argmax(rf_p_test,axis=1)
 
+    # all input probs to get the fit calib model
+    tvec = np.linspace(0.01, 0.99, 99)
+
     # Platt scaling on RF
     if "Platt" in calib_methods:
         plat_calib = _SigmoidCalibration().fit(rf_p_calib[:,1], data["y_calib"])
         plat_p_test = convert_prob_2D(plat_calib.predict(rf_p_test[:,1]))
         results_dict[data["name"] + "_Platt_prob"] = plat_p_test
         results_dict[data["name"] + "_Platt_decision"] = np.argmax(plat_p_test,axis=1)
+        results_dict[data["name"] + "_Platt_fit"] = plat_calib.predict(tvec)
 
     # ISO calibration on RF
     if "ISO" in calib_methods:
@@ -98,6 +102,7 @@ def calibration(RF, data, calib_methods, metrics, plot_bins = 10, laplace=1):
         iso_p_test = convert_prob_2D(iso_calib.predict(rf_p_test[:,1]))
         results_dict[data["name"] + "_ISO_prob"] = iso_p_test
         results_dict[data["name"] + "_ISO_decision"] = np.argmax(iso_p_test,axis=1)
+        results_dict[data["name"] + "_ISO_fit"] = iso_calib.predict(tvec)
 
     # RF ranking + ISO
     if "Rank" in calib_methods:
@@ -108,6 +113,8 @@ def calibration(RF, data, calib_methods, metrics, plot_bins = 10, laplace=1):
         rank_p_test = convert_prob_2D(iso_rank.predict(x_test_rank))
         results_dict[data["name"] + "_Rank_prob"] = rank_p_test
         results_dict[data["name"] + "_Rank_decision"] = np.argmax(rank_p_test,axis=1)
+        # tvec_rank = RF.rank_refrence(data["x_test"], class_to_rank=1)
+        # results_dict[data["name"] + "_Rank_fit"] = iso_rank.predict(tvec_rank)
 
     # perfect rank + ISO
     if "prank" in calib_methods:
@@ -122,6 +129,7 @@ def calibration(RF, data, calib_methods, metrics, plot_bins = 10, laplace=1):
         crf_p_test = crf_calib.predict(rf_p_test[:,1])
         results_dict[data["name"] + "_CRF_prob"] = crf_p_test
         results_dict[data["name"] + "_CRF_decision"] = np.argmax(crf_p_test,axis=1)
+        results_dict[data["name"] + "_CRF_fit"] = crf_calib.predict(tvec)[:,1]
 
     # Venn calibrator
     if "Venn" in calib_methods:
@@ -129,6 +137,7 @@ def calibration(RF, data, calib_methods, metrics, plot_bins = 10, laplace=1):
         ven_p_test = ven_calib.predict(rf_p_test)
         results_dict[data["name"] + "_Venn_prob"] = ven_p_test
         results_dict[data["name"] + "_Venn_decision"] = np.argmax(ven_p_test,axis=1)
+        results_dict[data["name"] + "_Venn_fit"] = ven_calib.predict(convert_prob_2D(tvec))[:,1]
 
     # Venn abers
     if "VA" in calib_methods:       
@@ -136,6 +145,7 @@ def calibration(RF, data, calib_methods, metrics, plot_bins = 10, laplace=1):
         va_p_test = VA.predict(rf_p_test[:,1])
         results_dict[data["name"] + "_VA_prob"] = va_p_test
         results_dict[data["name"] + "_VA_decision"] = np.argmax(va_p_test,axis=1)
+        results_dict[data["name"] + "_VA_fit"] = VA.predict(tvec)[:,1]
 
     # Beta calibration
     if "Beta" in calib_methods:
@@ -143,6 +153,7 @@ def calibration(RF, data, calib_methods, metrics, plot_bins = 10, laplace=1):
         beta_p_test = convert_prob_2D(beta_calib.predict(rf_p_test[:,1]))
         results_dict[data["name"] + "_Beta_prob"] = beta_p_test
         results_dict[data["name"] + "_Beta_decision"] = np.argmax(beta_p_test,axis=1)
+        results_dict[data["name"] + "_Beta_fit"] = beta_calib.predict(tvec)
 
     # Elkan calibration
     if "Elkan" in calib_methods:
@@ -150,6 +161,7 @@ def calibration(RF, data, calib_methods, metrics, plot_bins = 10, laplace=1):
         elkan_p_test = elkan_calib.predict(rf_p_test[:,1])
         results_dict[data["name"] + "_Elkan_prob"] = elkan_p_test
         results_dict[data["name"] + "_Elkan_decision"] = np.argmax(elkan_p_test,axis=1)
+        results_dict[data["name"] + "_Elkan_fit"] = elkan_calib.predict(tvec)[:,1]
 
     # tree LR calib
     if "tlr" in calib_methods:
@@ -157,6 +169,8 @@ def calibration(RF, data, calib_methods, metrics, plot_bins = 10, laplace=1):
         tlr_p_test = tlr_calib.predict(data["x_test"])
         results_dict[data["name"] + "_tlr_prob"] = tlr_p_test
         results_dict[data["name"] + "_tlr_decision"] = np.argmax(tlr_p_test,axis=1)
+        # results_dict[data["name"] + "_tlr_fit"] = tlr_calib.predict(convert_prob_2D(tvec))[:,1]
+
 
 
     if "acc" in metrics:
@@ -276,31 +290,47 @@ def exp_mean_rank_through_time(exp_df_all, exp_df, exp_value, value="rank", exp_
         exp_df_all[k] = pd.concat([exp_df_all[k], (pd.DataFrame([calib_values]))])
     return exp_df_all
 
-def plot_probs(exp_data_name, probs, data, calib_methods, run_index, hist_plot=True):
+def plot_probs(exp_data_name, probs, data, calib_methods, run_index, hist_plot=False):
     for method in calib_methods:
-        # plt.plot([0, 1], [0, 1], linestyle='--')
-        # colors = ['r', 'b']
-        # plt.scatter(data[\"tp_test\"], res[f\"{exp_data_name}_{method}_prob\"][:,1], marker='.', c=[colors[c] for c in data[\"y_test\"].astype(int)], label=['Class 0', 'Class 1'])
-        # plt.xlabel(\"True probability\")
-        # plt.ylabel(\"Predicted probability\")
-        # plt.legend()
-        fig, ax = plt.subplots()
+        plt.plot([0, 1], [0, 1], linestyle='--')
         colors = ['black', 'red']
-        scatter = ax.scatter(data["tp_test"], probs[f"{exp_data_name}_{method}_prob"][:,1], c=[colors[c] for c in data["y_test"].astype(int)])
-        # produce a legend with the unique colors from the scatter
-        legend1 = ax.legend('Class 0', 'Class 1',loc="upper left", title="Classes")
-        ax.plot([0, 1], [0, 1], linestyle='--')
-        ax.add_artist(legend1)
+        plt.scatter(data["tp_test"], probs[f"{exp_data_name}_{method}_prob"][:,1], marker='.', c=[colors[c] for c in data["y_test"].astype(int)])
+        if method != "RF" and method != "Rank" and method != "prank" and method != "tlr":
+            plt.plot(np.linspace(0.01, 0.99, 99), probs[f"{exp_data_name}_{method}_fit"], c="blue")
         plt.xlabel("True probability")
         plt.ylabel("Predicted probability")
+
+        # Add legend
+        red_patch = plt.plot([],[], marker='o', markersize=10, color='red', linestyle='')[0]
+        black_patch = plt.plot([],[], marker='o', markersize=10, color='black', linestyle='')[0]
+        calib_patch = plt.plot([],[], marker='_', markersize=15, color='blue', linestyle='')[0]
+        plt.legend((red_patch, black_patch, calib_patch), ('Class 0', 'Class 1', method))
         path = f"../../results/Synthetic/plots/{run_index}/{method}"
         if not os.path.exists(path):
             os.makedirs(path)
         plt.savefig(f"{path}/{method}_{exp_data_name}.png")
         plt.close()
+
         if hist_plot:
             plt.hist(probs[f"{exp_data_name}_{method}_prob"][:,1], bins=50)
             plt.savefig(f"{path}/{method}_{exp_data_name}_hist.png")
             plt.close()
+
+        # fig, ax = plt.subplots()
+        # colors = ['black', 'red']
+        # scatter = ax.scatter(data["tp_test"], probs[f"{exp_data_name}_{method}_prob"][:,1], c=[colors[c] for c in data["y_test"].astype(int)])
+        # # produce a legend with the unique colors from the scatter
+        # legend1 = ax.legend('Class 0', 'Class 1',loc="upper left", title="Classes")
+        # ax.plot([0, 1], [0, 1], linestyle='--')
+        # if method != "RF" and method != "Rank" and method != "prank" and method != "tlr":
+        #     ax.plot(np.linspace(0.01, 0.99, 99), probs[f"{exp_data_name}_{method}_fit"], label=f"{method}")
+        # ax.add_artist(legend1)
+        # plt.xlabel("True probability")
+        # plt.ylabel("Predicted probability")
+        # path = f"../../results/Synthetic/plots/{run_index}/{method}"
+        # if not os.path.exists(path):
+        #     os.makedirs(path)
+        # plt.savefig(f"{path}/{method}_{exp_data_name}.png")
+        # plt.close()
 
 
