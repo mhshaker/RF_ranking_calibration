@@ -52,9 +52,9 @@ class IR_RF(RandomForestClassifier):
     def predict(self, X):
         return np.argmax(self.predict_proba(X), axis=1)
     
-    def rank(self, X, class_to_rank=1, train_rank=False, return_tree_rankings=False):
-        probs = self.predict_proba(X, laplace=1, return_tree_prob=True)[:,:,class_to_rank]
-        count = self.tree_leafcounts(X, laplace=1)[:,:,class_to_rank] # not probs but the number of instances in the leafs of the trees
+    def rank(self, X, class_to_rank=1, laplace=1, train_rank=False, return_tree_rankings=False):
+        probs = self.predict_proba(X, laplace=laplace, return_tree_prob=True)[:,:,class_to_rank]
+        count = self.tree_leafcounts(X, laplace=laplace)[:,:,class_to_rank] # not probs but the number of instances in the leafs of the trees
         probs *= count
 
         order = np.argsort(probs, axis=0, kind="stable")
@@ -72,10 +72,10 @@ class IR_RF(RandomForestClassifier):
         else:
             return IR_RF_rank
         
-    def rank_refrence(self, X, class_to_rank=1): # find where X fals in the ranking of calib data
+    def rank_refrence(self, X, class_to_rank=1, laplace=1): # find where X fals in the ranking of calib data
 
-        probs = self.predict_proba(X, laplace=1, return_tree_prob=True)[:,:,class_to_rank]
-        count = self.tree_leafcounts(X, laplace=1)[:,:,class_to_rank] # not probs but the number of instances in the leafs of the trees
+        probs = self.predict_proba(X, laplace=laplace, return_tree_prob=True)[:,:,class_to_rank]
+        count = self.tree_leafcounts(X, laplace=laplace)[:,:,class_to_rank] # not probs but the number of instances in the leafs of the trees
         probs *= count
 
         ranks = []
