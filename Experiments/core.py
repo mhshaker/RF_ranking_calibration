@@ -22,6 +22,7 @@ from estimators.TLR_estimator import treeLR_calib
 from sklearn.isotonic import IsotonicRegression
 from sklearn.calibration import _SigmoidCalibration
 from betacal import BetaCalibration
+from sklearn.linear_model import LinearRegression
 
 from CalibrationM import confidance_ECE, convert_prob_2D
 from sklearn.metrics import brier_score_loss
@@ -53,6 +54,8 @@ from sklearn.calibration import calibration_curve
 # metrics = ["acc", "auc", "brier", "ece", "tce"]
 
 # run_name = "Samples"
+
+tvec = np.linspace(0.01, 0.99, 990)
 
 
 def split_train_calib_test(name, X, y, test_size, calib_size, seed=0, tp=np.zeros(10)):
@@ -86,9 +89,15 @@ def calibration(RF, data, calib_methods, metrics, plot_bins = 10, laplace=1):
     results_dict[data["name"] + "_RF_decision"] = np.argmax(rf_p_test,axis=1)
 
     # all input probs to get the fit calib model
-    tvec = np.linspace(0.01, 0.99, 99)
 
     # Platt scaling on RF
+    if "Line" in calib_methods:
+        lr_calib = LinearRegression().fit(rf_p_calib, data["y_calib"])
+        y_pred_clipped = np.clip(lr_calib.predict(rf_p_test), 0, 1)
+        lr_p_test = convert_prob_2D(y_pred_clipped)
+        results_dict[data["name"] + "_Line_prob"] = lr_p_test
+        results_dict[data["name"] + "_Line_decision"] = np.argmax(lr_p_test,axis=1)
+        results_dict[data["name"] + "_Line_fit"] = np.clip(lr_calib.predict(convert_prob_2D(tvec)), 0, 1)
     if "Platt" in calib_methods:
         plat_calib = _SigmoidCalibration().fit(rf_p_calib[:,1], data["y_calib"])
         plat_p_test = convert_prob_2D(plat_calib.predict(rf_p_test[:,1]))
@@ -296,7 +305,7 @@ def plot_probs(exp_data_name, probs, data, calib_methods, run_index, hist_plot=F
         colors = ['black', 'red']
         plt.scatter(data["tp_test"], probs[f"{exp_data_name}_{method}_prob"][:,1], marker='.', c=[colors[c] for c in data["y_test"].astype(int)])
         if method != "RF" and method != "Rank" and method != "prank" and method != "tlr":
-            plt.plot(np.linspace(0.01, 0.99, 99), probs[f"{exp_data_name}_{method}_fit"], c="blue")
+            plt.plot(tvec, probs[f"{exp_data_name}_{method}_fit"], c="blue")
         plt.xlabel("True probability")
         plt.ylabel("Predicted probability")
 
@@ -313,6 +322,7 @@ def plot_probs(exp_data_name, probs, data, calib_methods, run_index, hist_plot=F
 
         if hist_plot:
             plt.hist(probs[f"{exp_data_name}_{method}_prob"][:,1], bins=50)
+            plt.xlabel(f"probability output of {method}")
             plt.savefig(f"{path}/{method}_{exp_data_name}_hist.png")
             plt.close()
 
