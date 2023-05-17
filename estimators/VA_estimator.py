@@ -20,6 +20,7 @@ class VA_calib(BaseEstimator, ClassifierMixin):
         for x in X:
 
             dataset0 = self.dataset + [(x,0)]
+            # print("len dataset0", dataset0[1])
             iso0 = IsotonicRegression().fit(*zip(*dataset0))
             p0.append(iso0.predict([x]))
             
@@ -29,4 +30,6 @@ class VA_calib(BaseEstimator, ClassifierMixin):
 
         p0, p1 = np.array(p0).flatten(),np.array(p1).flatten()
 
-        return np.concatenate((p0.reshape(-1,1), p1.reshape(-1,1)), axis=1)
+        interval = np.concatenate((p0.reshape(-1,1), p1.reshape(-1,1)), axis=1)
+        res = np.mean(interval, axis=1)
+        return res

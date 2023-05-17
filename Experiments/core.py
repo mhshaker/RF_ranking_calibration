@@ -149,12 +149,13 @@ def calibration(RF, data, calib_methods, metrics, plot_bins = 10, laplace=1):
         results_dict[data["name"] + "_Venn_fit"] = ven_calib.predict(convert_prob_2D(tvec))[:,1]
 
     # Venn abers
-    if "VA" in calib_methods:       
+    if "VA" in calib_methods:
+        print("VA run")  
         VA = VA_calib().fit(rf_p_calib[:,1], data["y_calib"])
-        va_p_test = VA.predict(rf_p_test[:,1])
+        va_p_test = convert_prob_2D(VA.predict(rf_p_test[:,1]))
         results_dict[data["name"] + "_VA_prob"] = va_p_test
         results_dict[data["name"] + "_VA_decision"] = np.argmax(va_p_test,axis=1)
-        results_dict[data["name"] + "_VA_fit"] = VA.predict(tvec)[:,1]
+        results_dict[data["name"] + "_VA_fit"] = VA.predict(tvec)
 
     # Beta calibration
     if "Beta" in calib_methods:
