@@ -150,7 +150,6 @@ def calibration(RF, data, calib_methods, metrics, plot_bins = 10, laplace=1):
 
     # Venn abers
     if "VA" in calib_methods:
-        print("VA run")  
         VA = VA_calib().fit(rf_p_calib[:,1], data["y_calib"])
         va_p_test = convert_prob_2D(VA.predict(rf_p_test[:,1]))
         results_dict[data["name"] + "_VA_prob"] = va_p_test
