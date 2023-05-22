@@ -56,21 +56,29 @@ from sklearn.calibration import calibration_curve
 # run_name = "Samples"
 
 tvec = np.linspace(0.01, 0.99, 990)
+calib_methods = ["RF", "Platt" , "ISO", "Rank", "CRF", "VA", "Beta", "Elkan", "tlr", "Line"]
+metrics = ["acc", "auc", "brier", "logloss", "ece", "tce"]
 
 
-def split_train_calib_test(name, X, y, test_size, calib_size, seed=0, tp=np.zeros(10)):
+def split_train_calib_test(name, X, y, test_size, calib_size, orig_seed=0, tp=np.zeros(10)):
     ### spliting data to train calib and test
-    x_train_calib, x_test, y_train_calib, y_test = train_test_split(X, y, test_size=test_size, shuffle=True, random_state=seed)
-    x_train, x_calib, y_train, y_calib = train_test_split(x_train_calib, y_train_calib, test_size=calib_size, shuffle=True, random_state=seed)
-    if not tp.all() == 0: 
-        _, _, tp_train_calib, tp_test = train_test_split(X, tp, test_size=test_size, shuffle=True, random_state=seed)
-        _, _, tp_train, tp_calib = train_test_split(x_train_calib, tp_train_calib, test_size=0.5, shuffle=True, random_state=seed)
+    for i in range(1000, 1100): # the for loop is to make sure the calib train and test split all consist of both classes of the binary dataset
+        seed = i + orig_seed
+        x_train_calib, x_test, y_train_calib, y_test = train_test_split(X, y, test_size=test_size, shuffle=True, random_state=seed)
+        x_train, x_calib, y_train, y_calib = train_test_split(x_train_calib, y_train_calib, test_size=calib_size, shuffle=True, random_state=seed)
+        if not tp.all() == 0: 
+            _, _, tp_train_calib, tp_test = train_test_split(X, tp, test_size=test_size, shuffle=True, random_state=seed)
+            _, _, tp_train, tp_calib = train_test_split(x_train_calib, tp_train_calib, test_size=0.5, shuffle=True, random_state=seed)
 
-    if tp.all() == 0: 
-        data = {"name":name, "x_train": x_train, "x_calib":x_calib, "x_test":x_test, "y_train":y_train, "y_calib":y_calib, "y_test":y_test}
+        if tp.all() == 0: 
+            data = {"name":name, "x_train": x_train, "x_calib":x_calib, "x_test":x_test, "y_train":y_train, "y_calib":y_calib, "y_test":y_test}
 
-    else:
-        data = {"name":name, "x_train": x_train, "x_calib":x_calib, "x_test":x_test, "y_train":y_train, "y_calib":y_calib, "y_test":y_test, "tp_train":tp_train, "tp_calib":tp_calib, "tp_test":tp_test}
+        else:
+            data = {"name":name, "x_train": x_train, "x_calib":x_calib, "x_test":x_test, "y_train":y_train, "y_calib":y_calib, "y_test":y_test, "tp_train":tp_train, "tp_calib":tp_calib, "tp_test":tp_test}
+        
+        if len(np.unique(data["y_calib"])) > 1 and len(np.unique(data["y_test"])) > 1 and len(np.unique(data["y_train"])) > 1:
+            break
+
     return data
 
 def calibration(RF, data, calib_methods, metrics, plot_bins = 10, laplace=1):
@@ -301,9 +309,12 @@ def exp_mean_rank_through_time(exp_df_all, exp_df, exp_value, value="rank", exp_
 
 def plot_probs(exp_data_name, probs, data, calib_methods, run_index, hist_plot=False):
     for method in calib_methods:
+        if method == "Rank":
+            print(f"RF unique prob {exp_data_name}", len(np.unique(probs[f"{exp_data_name}_RF_prob"][:,1])))
         plt.plot([0, 1], [0, 1], linestyle='--')
         colors = ['black', 'red']
         plt.scatter(data["tp_test"], probs[f"{exp_data_name}_{method}_prob"][:,1], marker='.', c=[colors[c] for c in data["y_test"].astype(int)])
+        plt.scatter(data["tp_test"], probs[f"{exp_data_name}_RF_prob"][:,1], marker='.', c=[colors[c] for c in data["y_test"].astype(int)], alpha=0.1)
         if method != "RF" and method != "Rank" and method != "prank" and method != "tlr":
             plt.plot(tvec, probs[f"{exp_data_name}_{method}_fit"], c="blue")
         plt.xlabel("True probability")
