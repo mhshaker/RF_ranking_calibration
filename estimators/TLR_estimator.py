@@ -2,6 +2,7 @@ import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
 from CalibrationM import convert_prob_2D
 from sklearn.linear_model import LogisticRegression
+from estimators.LR_estimator import LR_u as lr
 
 class treeLR_calib(BaseEstimator, ClassifierMixin):
 
@@ -39,11 +40,10 @@ class treeLR_calib(BaseEstimator, ClassifierMixin):
             lr_x_calib, _, _ = self.convert_data_to_lr(estimator, x_calib)
             self.tree_leaf_list.append(leafs)
             self.ref_index.append(ref)
-            # train LR
-            # tlr = LogisticRegression(random_state=0).fit(lr_x_train, y_train)
-
+            # train LR with training data
+            tlr = lr(random_state=0).fit(lr_x_train, y_train)
             # retrain alpha with calib data
-            tlr = LogisticRegression(random_state=0).fit(lr_x_calib, y_calib)
+            tlr = tlr.update_intercept(lr_x_calib, y_calib)
             self.lr_list.append(tlr)
 
         return self
