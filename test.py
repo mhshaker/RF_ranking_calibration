@@ -18,11 +18,30 @@
 # acc = m.score(data["x_test"], data["y_test"])
 # print("acc", acc)
 
-
 import numpy as np
-from sklearn.calibration import calibration_curve
-y_true = np.array([0, 0, 0, 0, 1, 1, 1, 1, 1])
-y_pred = np.array([0.1, 0.2, 0.3, 0.4, 0.65, 0.7, 0.8, 0.9,  1.])
-prob_true, prob_pred = calibration_curve(y_true, y_pred, n_bins=3)
-print("prob_true", prob_true) 
-print("prob_pred", prob_pred) 
+np.random.seed(123)
+import matplotlib.pyplot as plt
+
+from skopt import BayesSearchCV
+from sklearn.datasets import load_digits
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+
+X, y = load_digits(n_class=10, return_X_y=True)
+X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.75, test_size=.25, random_state=0)
+
+# log-uniform: understand as search over p = exp(x) by varying x
+opt = BayesSearchCV(
+    RandomForestClassifier(),
+    {
+        'n_estimators': (1, 200),
+        'max_depth': (1, 8),
+    },
+    n_iter=32,
+    cv=3
+)
+
+opt.fit(X_train, y_train)
+
+print("val. score: %s" % opt.best_score_)
+print("test score: %s" % opt.score(X_test, y_test))

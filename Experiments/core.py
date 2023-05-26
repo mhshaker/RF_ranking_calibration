@@ -229,7 +229,10 @@ def model_calibration(models, data, metrics, plot_bins = 10):
 
     # random forest probs
     for model_key in models:
-        p_test = models[model_key].predict_proba(data["x_test"])
+        if model_key == "RF_l":
+            p_test = models[model_key].predict_proba(data["x_test"], laplace=1)
+        else:
+            p_test = models[model_key].predict_proba(data["x_test"])
         results_dict[data["name"] + f"_{model_key}_prob"] = p_test
         results_dict[data["name"] + f"_{model_key}_decision"] = np.argmax(p_test,axis=1)
 
@@ -353,15 +356,14 @@ def exp_mean_rank_through_time(exp_df_all, exp_df, exp_value, value="rank", exp_
         exp_df_all[k] = pd.concat([exp_df_all[k], (pd.DataFrame([calib_values]))])
     return exp_df_all
 
-def plot_probs(exp_data_name, probs, data, calib_methods, run_index, hist_plot=False):
+def plot_probs(exp_data_name, probs, data, calib_methods, run_index, hist_plot=False, calib_plot=False):
     for method in calib_methods:
-        if method == "Rank":
-            print(f"RF unique prob {exp_data_name}", len(np.unique(probs[f"{exp_data_name}_RF_prob"][:,1])))
+
         plt.plot([0, 1], [0, 1], linestyle='--')
         colors = ['black', 'red']
         plt.scatter(data["tp_test"], probs[f"{exp_data_name}_{method}_prob"][:,1], marker='.', c=[colors[c] for c in data["y_test"].astype(int)])
         plt.scatter(data["tp_test"], probs[f"{exp_data_name}_RF_prob"][:,1], marker='.', c=[colors[c] for c in data["y_test"].astype(int)], alpha=0.1)
-        if method != "RF" and method != "Rank" and method != "prank" and method != "tlr":
+        if method != "RF" and method != "Rank" and method != "prank" and method != "tlr" and calib_plot:
             plt.plot(tvec, probs[f"{exp_data_name}_{method}_fit"], c="blue")
         plt.xlabel("True probability")
         plt.ylabel("Predicted probability")

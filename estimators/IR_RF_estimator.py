@@ -28,7 +28,7 @@ class IR_RF(RandomForestClassifier):
 
     # refrence_prob = np.array()
 
-    def predict_proba(self, X, laplace=1, return_tree_prob=False): # normal random forest predic_proba with the addition of Laplace
+    def predict_proba(self, X, laplace=0, return_tree_prob=False): # normal random forest predic_proba with the addition of Laplace
         prob_matrix  = []
         for estimator in self.estimators_:
             tree_prob = tree_laplace_corr(estimator,X, laplace)
