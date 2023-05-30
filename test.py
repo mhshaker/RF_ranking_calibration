@@ -1,47 +1,50 @@
 
-# import Data.data_provider as dp
-# from Experiments import core as cal
-# from estimators.LR_estimator import LR_u as lr
-# from sklearn.linear_model import LogisticRegression
-
-# data_name = "spambase"
-# X, y = dp.load_data(data_name, ".")
-# data = cal.split_train_calib_test(data_name, X, y, 0.3, 0.3, 0)
-
-
-# m = lr(random_state=0).fit(data["x_train"], data["y_train"])
-# print("intercept before", m.intercept_[0])
-# acc = m.score(data["x_test"], data["y_test"])
-# print("acc", acc)
-# m = m.update_intercept(data["x_calib"], data["y_calib"])
-# print("intercept after ", m.intercept_[0])
-# acc = m.score(data["x_test"], data["y_test"])
-# print("acc", acc)
-
-import numpy as np
-np.random.seed(123)
-import matplotlib.pyplot as plt
-
-from skopt import BayesSearchCV
-from sklearn.datasets import load_digits
+import Data.data_provider as dp
+from Experiments import core as cal
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
+from estimators.IR_RF_estimator import IR_RF
+import numpy as np
 
-X, y = load_digits(n_class=10, return_X_y=True)
-X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.75, test_size=.25, random_state=0)
+# data
+data_name = "QSAR"
+X, y = dp.load_data(data_name, ".")
+data = cal.split_train_calib_test(data_name, X, y, 0.3, 0.3, 0)
 
-# log-uniform: understand as search over p = exp(x) by varying x
-opt = BayesSearchCV(
-    RandomForestClassifier(),
-    {
-        'n_estimators': (1, 200),
-        'max_depth': (1, 8),
-    },
-    n_iter=32,
-    cv=3
-)
+print("---------------------------------RF")
+rf = RandomForestClassifier(n_estimators=30, random_state=10).fit(data["x_train"], data["y_train"])
+irrf = IR_RF(n_estimators=30, random_state=10).fit(data["x_train"], data["y_train"])
 
-opt.fit(X_train, y_train)
+rf_prob = rf.predict_proba(data["x_test"])
+rf_CT = irrf.predict_proba(data["x_test"], classifier_tree=True)
+rf_PET = irrf.predict_proba(data["x_test"], classifier_tree=False)
 
-print("val. score: %s" % opt.best_score_)
-print("test score: %s" % opt.score(X_test, y_test))
+# print("rf_prob\n", rf_prob)
+# print("rf_CT\n", rf_CT)
+# print("rf_PET\n", rf_PET)
+
+if (rf_CT == rf_PET).all():
+    print("Equal")
+else:
+    print("Not equal")
+
+# def convert_prob_2D(prob1D):
+#     prob_second_class = np.ones(len(prob1D)) - prob1D
+#     prob2D = np.concatenate((prob_second_class.reshape(-1,1), prob1D.reshape(-1,1)), axis=1)
+#     return prob2D
+
+
+# s = np.random.uniform(0,1,5)
+# # s = np.ones(1000)
+# print("s", s)
+# s = convert_prob_2D(s)
+
+# s_avg = s.mean(axis=0)
+
+# s_class = np.argmax(s, axis=1)
+# s_cavg = s_class.mean()
+
+# print("s", s)
+# print("---------------------------------")
+# print("s_avg", s_avg[1])
+# print("---------------------------------")
+# print("s_cavg", s_cavg)

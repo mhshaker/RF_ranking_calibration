@@ -1,6 +1,5 @@
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
-# from sklearn.ensemble._forest import ForestClassifier
 
 
 def tree_laplace_corr(tree, x_data, laplace_smoothing, return_counts=False):
@@ -24,21 +23,33 @@ def find_nearest_index(array, value):
     return idx
 
 
+def convert_prob_2D(prob1D):
+    prob_second_class = np.ones(len(prob1D)) - prob1D
+    prob2D = np.concatenate((prob_second_class.reshape(-1,1), prob1D.reshape(-1,1)), axis=1)
+    return prob2D
+
 class IR_RF(RandomForestClassifier):
 
     # refrence_prob = np.array()
 
-    def predict_proba(self, X, laplace=0, return_tree_prob=False): # normal random forest predic_proba with the addition of Laplace
+    def predict_proba(self, X, laplace=0, return_tree_prob=False, classifier_tree=False): # normal random forest predic_proba with the addition of Laplace
         prob_matrix  = []
         for estimator in self.estimators_:
-            tree_prob = tree_laplace_corr(estimator,X, laplace)
-            prob_matrix.append(tree_prob)
+            if classifier_tree:
+                tree_output = estimator.predict(X) # only the desision
+            else:
+                tree_output = tree_laplace_corr(estimator,X, laplace) # probability
+            prob_matrix.append(tree_output)
         prob_matrix = np.array(prob_matrix)
-        prob_matrix = prob_matrix.transpose([1,0,2]) # D1 = data index D2= ens tree index D3= prediction prob for classes
-        if return_tree_prob:
-            return prob_matrix
+        
+        if classifier_tree:
+            return convert_prob_2D(prob_matrix.mean(axis=0))
         else:
-            return prob_matrix.mean(axis=1)
+            prob_matrix = prob_matrix.transpose([1,0,2]) # D1 = data index D2= ens tree index D3= prediction prob for classes
+            if return_tree_prob:
+                return prob_matrix
+            else:
+                return prob_matrix.mean(axis=1)
 
     def tree_leafcounts(self, X, laplace=1):
         leafcount_matrix  = []
