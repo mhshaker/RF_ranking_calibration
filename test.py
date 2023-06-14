@@ -1,50 +1,38 @@
-
 import Data.data_provider as dp
-from Experiments import core as cal
 from sklearn.ensemble import RandomForestClassifier
-from estimators.IR_RF_estimator import IR_RF
-import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import RandomizedSearchCV
 
-# data
-data_name = "QSAR"
-X, y = dp.load_data(data_name, ".")
-data = cal.split_train_calib_test(data_name, X, y, 0.3, 0.3, 0)
+data_name = "spambase"
 
-print("---------------------------------RF")
-rf = RandomForestClassifier(n_estimators=30, random_state=10).fit(data["x_train"], data["y_train"])
-irrf = IR_RF(n_estimators=30, random_state=10).fit(data["x_train"], data["y_train"])
+X, y = dp.load_data(data_name, "./")
 
-rf_prob = rf.predict_proba(data["x_test"])
-rf_CT = irrf.predict_proba(data["x_test"], classifier_tree=True)
-rf_PET = irrf.predict_proba(data["x_test"], classifier_tree=False)
+x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.3, shuffle=True, random_state=0)
 
-# print("rf_prob\n", rf_prob)
-# print("rf_CT\n", rf_CT)
-# print("rf_PET\n", rf_PET)
+rf = RandomForestClassifier(random_state=0)
 
-if (rf_CT == rf_PET).all():
-    print("Equal")
-else:
-    print("Not equal")
-
-# def convert_prob_2D(prob1D):
-#     prob_second_class = np.ones(len(prob1D)) - prob1D
-#     prob2D = np.concatenate((prob_second_class.reshape(-1,1), prob1D.reshape(-1,1)), axis=1)
-#     return prob2D
+# search_space = {
+#     "criterion": ["gini", "entropy"],
+# }
 
 
-# s = np.random.uniform(0,1,5)
-# # s = np.ones(1000)
-# print("s", s)
-# s = convert_prob_2D(s)
+search_space = {
+    "n_estimators": [100],
+    "max_depth": [15, 20, 25],
+    "criterion": ["gini", "entropy"],
+    "min_samples_split": [2,3,4,5],
+    "min_samples_leaf": [1,2,3],
+}
 
-# s_avg = s.mean(axis=0)
+# GS = GridSearchCV(estimator=rf, param_grid=search_space, scoring=["accuracy"], refit="accuracy", cv=5)
+# GS.fit(x_train, y_train)
 
-# s_class = np.argmax(s, axis=1)
-# s_cavg = s_class.mean()
+RS = RandomizedSearchCV(rf, search_space, scoring=["accuracy"], refit="accuracy", cv=5, n_iter=10, random_state=0)
+RS.fit(x_train, y_train)
 
-# print("s", s)
-# print("---------------------------------")
-# print("s_avg", s_avg[1])
-# print("---------------------------------")
-# print("s_cavg", s_cavg)
+# print("GS best", GS.best_params_)
+print("RS best", RS.best_params_)
+
+# rf_best = GS.best_estimator_
+# print("acc", rf_best.score(x_test, y_test))

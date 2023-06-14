@@ -91,14 +91,23 @@ def calibration(RF, data, calib_methods, metrics, plot_bins = 10, laplace=1):
             results_dict[data["name"] + "_" + method + "_" + metric] = []
 
     # random forest probs
-    rf_p_calib = RF.predict_proba(data["x_calib"], laplace=laplace)
-    rf_p_test = RF.predict_proba(data["x_test"], laplace=laplace)
+    rf_p_calib = RF.predict_proba(data["x_calib"])
+    rf_p_test = RF.predict_proba(data["x_test"])
     results_dict[data["name"] + "_RF_prob"] = rf_p_test
     results_dict[data["name"] + "_RF_decision"] = np.argmax(rf_p_test,axis=1)
 
     # all input probs to get the fit calib model
 
-    # Platt scaling on RF
+    if "RF_CT" in calib_methods:
+        rf_ct_test = RF.predict_proba(data["x_test"], classifier_tree=True)
+        results_dict[data["name"] + "_RF_laplace_prob"] = rf_ct_test
+        results_dict[data["name"] + "_RF_laplace_decision"] = np.argmax(rf_ct_test,axis=1)
+
+    if "RF_Laplace" in calib_methods:
+        rf_lap_test = RF.predict_proba(data["x_test"], laplace=1)
+        results_dict[data["name"] + "_RF_laplace_prob"] = rf_lap_test
+        results_dict[data["name"] + "_RF_laplace_decision"] = np.argmax(rf_lap_test,axis=1)
+
     if "Line" in calib_methods:
         lr_calib = LinearRegression().fit(rf_p_calib, data["y_calib"])
         y_pred_clipped = np.clip(lr_calib.predict(rf_p_test), 0, 1)
