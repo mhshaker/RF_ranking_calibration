@@ -30,6 +30,7 @@ from sklearn.metrics import mean_squared_error
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_curve, auc
 from sklearn.calibration import calibration_curve
+from scipy.stats import binned_statistic
 
 # ### Parameters
 
@@ -372,8 +373,13 @@ def plot_probs(exp_data_name, probs, data, calib_methods, run_index, ref_plot_na
 
         plt.plot([0, 1], [0, 1], linestyle='--')
         colors = ['black', 'red']
+        colors_mean = ['orange', 'blue']
         plt.scatter(data["tp_test"], probs[f"{exp_data_name}_{method}_prob"][:,1], marker='.', c=[colors[c] for c in data["y_test"].astype(int)])
         plt.scatter(data["tp_test"], probs[f"{exp_data_name}_{ref_plot_name}_prob"][:,1], marker='.', c=[colors[c] for c in data["y_test"].astype(int)], alpha=0.1)
+
+        bin_means, bin_edges, binnumber = binned_statistic(data["tp_test"], probs[f"{exp_data_name}_{method}_prob"][:,1], bins=100)
+        plt.scatter((bin_edges[:-1] + bin_edges[1:])/2, bin_means, label='binned statistic of data')
+        
         if method != "RF" and method != "Rank" and method != "prank" and method != "tlr" and calib_plot:
             plt.plot(tvec, probs[f"{exp_data_name}_{method}_fit"], c="blue")
         plt.xlabel("True probability")
