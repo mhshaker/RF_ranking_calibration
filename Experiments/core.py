@@ -103,7 +103,8 @@ def calibration(RF, data, calib_methods, metrics, plot_bins = 10, laplace=1):
     if "RF_boot" in calib_methods:
         rf_tree_test = RF.predict_proba(data["x_test"], return_tree_prob=True)
         bc = Boot_calib()
-        bc_p_test = bc.predict(rf_tree_test)
+        # bc_p_test = bc.predict(rf_tree_test)
+        bc_p_test = bc.predict_ens(data["x_test"], data["x_train"], data["y_train"], RF)
         results_dict[data["name"] + "_RF_boot_prob"] = bc_p_test
         results_dict[data["name"] + "_RF_boot_decision"] = np.argmax(bc_p_test,axis=1)
 
@@ -386,28 +387,28 @@ def plot_probs(exp_data_name, probs, data, calib_methods, run_index, ref_plot_na
         plt.scatter(data["tp_test"], probs[f"{exp_data_name}_{ref_plot_name}_prob"][:,1], marker='.', c=[colors[c] for c in data["y_test"].astype(int)], alpha=0.1) # faded RF probs
 
 
-        ################## Just to test vertical and horisantal averaging
-        bin_means, bin_edges, binnumber = binned_statistic(data["tp_test"], probs[f"{exp_data_name}_{method}_prob"][:,1], bins=100) # Mean of the calibrated probs
-        plt.scatter((bin_edges[:-1] + bin_edges[1:])/2, bin_means, label='binned statistic of data')
-        v_tce = mean_squared_error((bin_edges[:-1] + bin_edges[1:])/2, bin_means)
+        # ################## Just to test vertical and horisantal averaging
+        # bin_means, bin_edges, binnumber = binned_statistic(data["tp_test"], probs[f"{exp_data_name}_{method}_prob"][:,1], bins=100) # Mean of the calibrated probs
+        # plt.scatter((bin_edges[:-1] + bin_edges[1:])/2, bin_means, label='binned statistic of data')
+        # v_tce = mean_squared_error((bin_edges[:-1] + bin_edges[1:])/2, bin_means)
 
-        bin_means, bin_edges, binnumber = binned_statistic(probs[f"{exp_data_name}_{method}_prob"][:,1], data["tp_test"], bins=100) # Horizantal Mean of the calibrated probs
-        plt.scatter((bin_edges[:-1] + bin_edges[1:])/2, bin_means, label='binned statistic of data')
-        h_tce = mean_squared_error((bin_edges[:-1] + bin_edges[1:])/2, bin_means)
-        ##################
+        # bin_means, bin_edges, binnumber = binned_statistic(probs[f"{exp_data_name}_{method}_prob"][:,1], data["tp_test"], bins=100) # Horizantal Mean of the calibrated probs
+        # plt.scatter((bin_edges[:-1] + bin_edges[1:])/2, bin_means, label='binned statistic of data')
+        # h_tce = mean_squared_error((bin_edges[:-1] + bin_edges[1:])/2, bin_means)
+        # ##################
         
         calib_tce = mean_squared_error(data["tp_test"], probs[f"{exp_data_name}_{method}_prob"][:,1]) # calculate TCE to add to the calib method plot
         
         if method != "RF" and method != "Rank" and method != "prank" and method != "tlr" and method !="RF_boot" and calib_plot:
             plt.plot(tvec, probs[f"{exp_data_name}_{method}_fit"], c="blue")
-        plt.xlabel(f"True probability V_tce {v_tce:.5f} h_tce {h_tce:.5f} RF {calib_tce:.5f}")
+        plt.xlabel(f"True probability")
         plt.ylabel("Predicted probability")
 
         # Add legend
         red_patch = plt.plot([],[], marker='o', markersize=10, color='red', linestyle='')[0]
         black_patch = plt.plot([],[], marker='o', markersize=10, color='black', linestyle='')[0]
         calib_patch = plt.plot([],[], marker='_', markersize=15, color='blue', linestyle='')[0]
-        plt.legend((red_patch, black_patch, calib_patch), ('Class 0', 'Class 1', method + f" (tce {calib_tce:0.5f})"))
+        plt.legend((red_patch, black_patch, calib_patch), ('Class 0', 'Class 1', method + f" (TCE {calib_tce:0.5f})"))
         path = f"../../results/Synthetic/plots/{run_index}/{method}"
         if not os.path.exists(path):
             os.makedirs(path)
