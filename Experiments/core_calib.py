@@ -103,8 +103,8 @@ def calibration(RF, data, params):
     method = "RF_ensbin"
     if method in calib_methods:
         rf_tree_test = RF.predict_proba(data["x_test"])
-        bc = Boot_calib().fit(data["x_train"], data["y_train"], RF)
-        bc_p_test = bc.predict_ens2(rf_tree_test)
+        bc = Boot_calib(boot_count=params["boot_count"]).fit(data["x_train"], data["y_train"], RF)
+        bc_p_test = convert_prob_2D(bc.predict_ens2(rf_p_test[:,1]))
         results_dict[f"{data_name}_{method}_prob"] = bc_p_test
         results_dict[f"{data_name}_{method}_decision"] = np.argmax(bc_p_test,axis=1)
 

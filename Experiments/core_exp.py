@@ -46,7 +46,7 @@ params_all = {
                     "min_samples_leaf": [1,2,3],
                     },
     # RF
-    "depth": 6,
+    "depth": 4,
     "n_estimators": 100,
     "oob": False,
 
