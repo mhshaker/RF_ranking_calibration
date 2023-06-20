@@ -1,12 +1,39 @@
 from estimators.IR_RF_estimator import IR_RF
 import numpy as np
+from sklearn.calibration import calibration_curve
+
+def find_nearest_index(arr, X):
+    sorted_arr = np.sort(arr)
+    absolute_diff = np.abs(sorted_arr - X)
+    nearest_index = np.argmin(absolute_diff)
+    return nearest_index
+
 
 class Boot_calib():
 
-    def __init__(self, bootstrap_size=100, boot_count=100):
+    def __init__(self, bootstrap_size=100, boot_count=100, bins=30):
 
         self.bootstrap_size = bootstrap_size
         self.boot_count = boot_count
+        self.bins = bins
+
+    def fit(self, x_train, y_train, model):
+        ens = []
+        p_all = np.empty(1)
+        y_all = np.empty(1)
+        for boot_index in range(self.boot_count):
+            model.random_state = boot_index * 100 # change the random seed to fit again
+            # model = IR_RF(n_estimators=10  , oob_score=False, max_depth= 6, random_state=boot_index) # changing the RF params
+            model.fit(x_train, y_train)
+            p = model.predict_proba(x_train)
+            p_all = np.concatenate((p[:,1], p_all))
+            y_all = np.concatenate((y_train, y_all))
+            ens.append(p.copy())
+        print("p_all shape", p_all.shape)
+        print("y_all shape", y_all.shape)
+        
+        self.prob_true, self.prob_pred = calibration_curve(y_all, p_all, n_bins=self.bins)
+        return self
 
     def predict(self, X):
 
@@ -35,3 +62,11 @@ class Boot_calib():
 
         return b
 
+
+    def predict_ens2(self, X):
+        calib_prob = []
+        for x in X:
+            index = find_nearest_index(self.prob_pred, x)
+            calib_prob.append(self.prob_true[index])
+        calib_prob = np.array(calib_prob)
+        return calib_prob
