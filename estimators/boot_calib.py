@@ -1,6 +1,7 @@
 from estimators.IR_RF_estimator import IR_RF
 import numpy as np
 from sklearn.calibration import calibration_curve
+from sklearn.metrics import accuracy_score
 
 def find_nearest_index(arr, X):
     sorted_arr = np.sort(arr)
@@ -76,6 +77,43 @@ class Boot_calib():
         model.set_params(**params_org)
 
         return b
+
+
+    def true_prob_ens(self, x_test, y_test, x_train, y_train, model, param_change=False):
+
+        ens = []
+        params = model.get_params().copy()
+        params_org = model.get_params().copy()
+
+        depth_extention = np.random.randint(low=-1, high=1, size=self.boot_count)
+
+        for boot_index, de in zip(range(self.boot_count), depth_extention):
+            model.random_state = boot_index * 100 # change the random seed to fit again
+            if param_change:
+                model.max_depth = params['max_depth'] + de
+            model.fit(x_train, y_train)
+            p = model.predict_proba(x_test)
+            ens.append(p.copy())
+        ens = np.array(ens)
+
+        true_prob = []
+        for i, y in enumerate(y_test):
+            ens_prob_single_point = ens[:,i,:]
+            ens_decision_single_point = np.argmax(ens_prob_single_point,axis=1)
+            acc = accuracy_score(np.repeat(y, len(ens_decision_single_point)), ens_decision_single_point)
+            true_prob.append(acc)
+            # print("true prob ", ens_prob_single_point)
+            # print("true deci ", ens_decision_single_point)
+            # print("y_test", np.repeat(y, len(ens_decision_single_point)))
+            # print("acc ", acc)
+            # print("---------------------------------")
+        true_prob = np.array(true_prob)
+        # print("true_prob ", true_prob)
+
+        model.set_params(**params_org)
+
+        return true_prob
+
 
 
     def predict_largeRF(self, x_test, x_train, y_train, model):

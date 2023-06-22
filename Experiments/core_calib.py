@@ -78,6 +78,13 @@ def calibration(RF, data, params):
     results_dict[data["name"] + "_RF_decision"] = np.argmax(rf_p_test,axis=1)
 
     # all input probs to get the fit calib model
+    method = "true"
+    if method in calib_methods:
+        bc = Boot_calib(boot_count=params["boot_count"])
+        true_p_test = convert_prob_2D(bc.true_prob_ens(data["x_test"], data["y_test"], data["x_train"], data["y_train"], RF))
+        results_dict[f"{data_name}_{method}_prob"] = true_p_test
+        results_dict[f"{data_name}_{method}_decision"] = np.argmax(true_p_test,axis=1)
+    
     method = "bin"
     if method in calib_methods:
         rf_p_train = results_dict[data["name"] + "_RF_prob_train"]

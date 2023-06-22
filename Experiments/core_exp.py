@@ -40,7 +40,7 @@ params_all = {
     "opt_cv":5, 
     "opt_n_iter":10,
     "search_space": {
-                    "n_estimators": [50],
+                    "n_estimators": [4],
                     "max_depth": [2,3,4,5,6,7,8,10,20,50,100],
                     "criterion": ["gini", "entropy"],
                     # "min_samples_split": [2,3,4,5],
