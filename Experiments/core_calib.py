@@ -25,9 +25,10 @@ from sklearn.isotonic import IsotonicRegression
 from sklearn.calibration import _SigmoidCalibration
 from betacal import BetaCalibration
 from sklearn.linear_model import LinearRegression
-
+from scipy.stats import binned_statistic
 from CalibrationM import confidance_ECE, convert_prob_2D
 from sklearn.metrics import brier_score_loss
+from sklearn.metrics import log_loss
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_curve, auc
@@ -89,14 +90,28 @@ def calibration(RF, data, params):
     if method in calib_methods:
         rf_tree_test = RF.predict_proba(data["x_test"], return_tree_prob=True)
         bc = Boot_calib(boot_count=params["boot_count"], bootstrap_size= params["boot_size"])
-        bc_p_test = bc.predict(rf_tree_test)
+        bc_p_test = bc.predict_boot(rf_tree_test)
         results_dict[f"{data_name}_{method}_prob"] = bc_p_test
         results_dict[f"{data_name}_{method}_decision"] = np.argmax(bc_p_test,axis=1)
     
-    method = "RF_ens"
+    method = "RF_ens_r"
     if method in calib_methods:
         bc = Boot_calib(boot_count=params["boot_count"])
         bc_p_test = bc.predict_ens(data["x_test"], data["x_train"], data["y_train"], RF)
+        results_dict[f"{data_name}_{method}_prob"] = bc_p_test
+        results_dict[f"{data_name}_{method}_decision"] = np.argmax(bc_p_test,axis=1)
+
+    method = "RF_ens_p"
+    if method in calib_methods:
+        bc = Boot_calib(boot_count=params["boot_count"])
+        bc_p_test = bc.predict_ens(data["x_test"], data["x_train"], data["y_train"], RF, param_change=True)
+        results_dict[f"{data_name}_{method}_prob"] = bc_p_test
+        results_dict[f"{data_name}_{method}_decision"] = np.argmax(bc_p_test,axis=1)
+
+    method = "RF_large"
+    if method in calib_methods:
+        bc = Boot_calib(boot_count=params["boot_count"])
+        bc_p_test = bc.predict_largeRF(data["x_test"], data["x_train"], data["y_train"], RF)
         results_dict[f"{data_name}_{method}_prob"] = bc_p_test
         results_dict[f"{data_name}_{method}_decision"] = np.argmax(bc_p_test,axis=1)
 
@@ -244,7 +259,7 @@ def calibration(RF, data, params):
 
     if "logloss" in metrics:
         for method in calib_methods:
-            results_dict[f"{data_name}_{method}_logloss"].append(brier_score_loss(data["y_test"], results_dict[f"{data_name}_{method}_prob"][:,1]))
+            results_dict[f"{data_name}_{method}_logloss"].append(log_loss(data["y_test"], results_dict[f"{data_name}_{method}_prob"][:,1]))
 
     if "tce" in metrics:
         for method in calib_methods:
@@ -293,7 +308,7 @@ def model_calibration(models, data, metrics, plot_bins = 10):
 
     if "logloss" in metrics:
         for model in models:
-            results_dict[data["name"] + "_" + model +"_logloss"].append(brier_score_loss(data["y_test"], results_dict[data["name"] + "_" + model +"_prob"][:,1]))
+            results_dict[data["name"] + "_" + model +"_logloss"].append(log_loss(data["y_test"], results_dict[data["name"] + "_" + model +"_prob"][:,1]))
 
     if "tce" in metrics:
         for model in models:
@@ -393,7 +408,25 @@ def exp_mean_rank_through_time(exp_df_all, exp_df, exp_value, value="rank", exp_
         exp_df_all[k] = pd.concat([exp_df_all[k], (pd.DataFrame([calib_values]))])
     return exp_df_all
 
-def plot_probs(exp_data_name, probs, data, calib_methods, run_index, ref_plot_name="RF", hist_plot=False, calib_plot=False):
+
+def find_nearest_index(arr, X):
+    sorted_arr = np.sort(arr)
+    absolute_diff = np.abs(sorted_arr - X)
+    nearest_index = np.argmin(absolute_diff)
+    return nearest_index
+
+def predict_bin(prob_true, prob_pred, Y):
+    calib_prob = []
+    for y in Y:
+        index = find_nearest_index(prob_pred, y)
+        p = prob_true[index]
+        calib_prob.append(p)
+    calib_prob = np.array(calib_prob)
+    return calib_prob
+
+def plot_probs(exp_data_name, probs, data, params, run_index, ref_plot_name="RF", hist_plot=False, calib_plot=False):
+
+    calib_methods = params["calib_methods"]
     
     for method in calib_methods:
 
@@ -408,8 +441,13 @@ def plot_probs(exp_data_name, probs, data, calib_methods, run_index, ref_plot_na
 
         # ################## Just to test vertical and horisantal averaging
         # bin_means, bin_edges, binnumber = binned_statistic(data["tp_test"], probs[f"{exp_data_name}_{ref_plot_name}_prob"][:,1], bins=100) # Mean of the calibrated probs
-        # plt.scatter((bin_edges[:-1] + bin_edges[1:])/2, bin_means, label='binned statistic of data')
+        # true_binded = (bin_edges[:-1] + bin_edges[1:])/2
+        # plt.scatter(true_binded, bin_means, label='binned statistic of data')
         # v_tce = mean_squared_error((bin_edges[:-1] + bin_edges[1:])/2, bin_means)
+
+        # y = predict_bin(true_binded, bin_means, probs[f"{exp_data_name}_{method}_prob"][:,1])
+        # plt.scatter(data["tp_test"], y, marker='.', c=[colors[c] for c in data["y_test"].astype(int)]) # Calibrated probs
+
 
         # bin_means, bin_edges, binnumber = binned_statistic(probs[f"{exp_data_name}_{method}_prob"][:,1], data["tp_test"], bins=100) # Horizantal Mean of the calibrated probs
         # plt.scatter((bin_edges[:-1] + bin_edges[1:])/2, bin_means, label='binned statistic of data')
@@ -417,6 +455,7 @@ def plot_probs(exp_data_name, probs, data, calib_methods, run_index, ref_plot_na
         # ##################
         
         calib_tce = mean_squared_error(data["tp_test"], probs[f"{exp_data_name}_{method}_prob"][:,1]) # calculate TCE to add to the calib method plot
+        # calib_tce = mean_squared_error(data["tp_test"], y) # calculate TCE to add to the calib method plot
         
         if (method == "ISO" or method == "CRF" or method == "Line" or method == "Platt" or method =="Beta" or method =="VA") and calib_plot:
             plt.plot(tvec, probs[f"{exp_data_name}_{method}_fit"], c="blue")
@@ -427,8 +466,8 @@ def plot_probs(exp_data_name, probs, data, calib_methods, run_index, ref_plot_na
         red_patch = plt.plot([],[], marker='o', markersize=10, color='red', linestyle='')[0]
         black_patch = plt.plot([],[], marker='o', markersize=10, color='black', linestyle='')[0]
         calib_patch = plt.plot([],[], marker='_', markersize=15, color='blue', linestyle='')[0]
-        plt.legend((red_patch, black_patch, calib_patch), ('Class 0', 'Class 1', method + f" (TCE {calib_tce:0.5f})"))
-        path = f"../../results/Synthetic/plots/{run_index}/{method}"
+        plt.legend((red_patch, black_patch, calib_patch), ('Class 1', 'Class 0', method + f" (TCE {calib_tce:0.5f})"))
+        path = f"./results/{params['exp_name']}/{run_index}/{method}"
         if not os.path.exists(path):
             os.makedirs(path)
         plt.savefig(f"{path}/{method}_{exp_data_name}.png")

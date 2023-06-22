@@ -42,7 +42,7 @@ class Boot_calib():
         self.prob_true, self.prob_pred = calibration_curve(y_all, p_all, n_bins=bin)
         return self
 
-    def predict(self, X):
+    def predict_boot(self, X):
 
         b = []
         for boot_index in range(self.boot_count):
@@ -55,7 +55,45 @@ class Boot_calib():
 
         return b
 
-    def predict_ens(self, x_test, x_train, y_train, model):
+    def predict_ens(self, x_test, x_train, y_train, model, param_change=False):
+
+        ens = []
+        params = model.get_params().copy()
+        params_org = model.get_params().copy()
+
+        depth_extention = np.random.randint(low=-1, high=1, size=self.boot_count)
+
+        for boot_index, de in zip(range(self.boot_count), depth_extention):
+            model.random_state = boot_index * 100 # change the random seed to fit again
+            if param_change:
+                model.max_depth = params['max_depth'] + de
+            model.fit(x_train, y_train)
+            p = model.predict_proba(x_test)
+            ens.append(p.copy())
+        ens = np.array(ens)
+        b = np.mean(ens, axis=0) # average all the ens
+
+        model.set_params(**params_org)
+
+        return b
+
+
+    def predict_largeRF(self, x_test, x_train, y_train, model):
+
+        ens = []
+        params = model.get_params().copy()
+        params_org = model.get_params().copy()
+
+        model.n_estimators = params['n_estimators'] * self.boot_count
+
+        model.fit(x_train, y_train)
+        p = model.predict_proba(x_test)
+
+        model.set_params(**params_org)
+        return p
+
+
+    def predict_ensbin(self, x_test, x_train, y_train, model):
 
         ens = []
         for boot_index in range(self.boot_count):
@@ -65,10 +103,9 @@ class Boot_calib():
             p = model.predict_proba(x_test)
             ens.append(p.copy())
         ens = np.array(ens)
-        b = np.mean(ens, axis=0) # average all the bootstraps
+        b = np.mean(ens, axis=0) # average all the ens
 
         return b
-
 
     def predict_ens2(self, X):
         calib_prob = []
