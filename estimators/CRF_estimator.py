@@ -77,6 +77,8 @@ class CRF_calib(BaseEstimator, ClassifierMixin):
 
     def predict(self, X):
 
+        # print("X", X)
+
         if self.learning_method == 'sig':
             r = self.sig.predict(X)
         elif self.learning_method == 'brier_opt':
@@ -89,8 +91,26 @@ class CRF_calib(BaseEstimator, ClassifierMixin):
         max_idx = np.argmax(X_2d, axis=1)
         min_idx = np.argmin(X_2d, axis=1)
 
-        max_indices = list(range(len(X_2d))), max_idx
-        min_indices = list(range(len(X_2d))), min_idx
+        neq_idx = (np.where(X_2d[:,0] != X_2d[:,1]))[0]
+
+        # print("max_idx", max_idx)
+        # print("min_idx", min_idx)
+
+        max_idx = max_idx[neq_idx]
+        min_idx = min_idx[neq_idx]
+
+        # print("max_idx", max_idx)
+        # print("min_idx", min_idx)
+
+        max_indices = neq_idx, max_idx
+        min_indices = neq_idx, min_idx
+
+        # print("eq_idx", neq_idx)
+        # print("max_indices", max_indices)
+        # print("min_indices", min_indices)
+
+        r = r[neq_idx]
+        # print("r", r)
 
         X_2d[max_indices] += r * (1- X_2d[max_indices])
         X_2d[min_indices] *= (1-r)
