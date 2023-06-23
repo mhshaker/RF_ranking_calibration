@@ -114,6 +114,40 @@ def calibration(RF, data, params):
         bc_p_test = bc.predict_ens(data["x_test"], data["x_train"], data["y_train"], RF, param_change=True)
         results_dict[f"{data_name}_{method}_prob"] = bc_p_test
         results_dict[f"{data_name}_{method}_decision"] = np.argmax(bc_p_test,axis=1)
+    
+    method = "RF_ens_boot"
+    if method in calib_methods:
+        bc = Boot_calib(boot_count=params["boot_count"], bootstrap_size= params["boot_size"])
+        bc_p_test = bc.predict_ens_boot(data["x_test"], data["x_train"], data["y_train"], RF)
+        results_dict[f"{data_name}_{method}_prob"] = bc_p_test
+        results_dict[f"{data_name}_{method}_decision"] = np.argmax(bc_p_test,axis=1)
+
+    method = "RF_ens_line"
+    if method in calib_methods:
+        bc = Boot_calib(boot_count=params["boot_count"])
+        eb_p_test = bc.predict_ens(data["x_test"], data["x_train"], data["y_train"], RF)
+        eb_p_calib = bc.predict_ens(data["x_train"], data["x_train"], data["y_train"], RF)
+
+        lr_calib = LinearRegression().fit(eb_p_calib, data["y_train"])
+        y_pred_clipped = np.clip(lr_calib.predict(eb_p_test), 0, 1)
+        ebl_p_test = convert_prob_2D(y_pred_clipped)
+
+        results_dict[f"{data_name}_{method}_prob"] = ebl_p_test
+        results_dict[f"{data_name}_{method}_decision"] = np.argmax(ebl_p_test,axis=1)
+
+    method = "RF_ens_CRF"
+    if method in calib_methods:
+        bc = Boot_calib(boot_count=params["boot_count"])
+        eb_p_test = bc.predict_ens(data["x_test"], data["x_train"], data["y_train"], RF)
+        eb_p_calib = bc.predict_ens(data["x_train"], data["x_train"], data["y_train"], RF)
+
+
+        crf_calib = CRF_calib(learning_method="sig_brior").fit(eb_p_calib[:,1], data["y_train"])
+        ebl_p_test = crf_calib.predict(eb_p_test[:,1])
+        
+        results_dict[f"{data_name}_{method}_prob"] = ebl_p_test
+        results_dict[f"{data_name}_{method}_decision"] = np.argmax(ebl_p_test,axis=1)
+
 
     method = "RF_large"
     if method in calib_methods:
@@ -121,6 +155,20 @@ def calibration(RF, data, params):
         bc_p_test = bc.predict_largeRF(data["x_test"], data["x_train"], data["y_train"], RF)
         results_dict[f"{data_name}_{method}_prob"] = bc_p_test
         results_dict[f"{data_name}_{method}_decision"] = np.argmax(bc_p_test,axis=1)
+
+    method = "RF_large_line"
+    if method in calib_methods:
+        bc = Boot_calib(boot_count=params["boot_count"])
+        bc_p_test = bc.predict_largeRF(data["x_test"], data["x_train"], data["y_train"], RF)
+        eb_p_calib = bc.predict_largeRF(data["x_train"], data["x_train"], data["y_train"], RF)
+
+        lr_calib = LinearRegression().fit(eb_p_calib, data["y_train"])
+        y_pred_clipped = np.clip(lr_calib.predict(bc_p_test), 0, 1)
+        ebl_p_test = convert_prob_2D(y_pred_clipped)
+
+
+        results_dict[f"{data_name}_{method}_prob"] = ebl_p_test
+        results_dict[f"{data_name}_{method}_decision"] = np.argmax(ebl_p_test,axis=1)
 
     method = "RF_ensbin"
     if method in calib_methods:
@@ -197,6 +245,15 @@ def calibration(RF, data, params):
         results_dict[f"{data_name}_{method}_prob"] = crf_p_test
         results_dict[f"{data_name}_{method}_decision"] = np.argmax(crf_p_test,axis=1)
         results_dict[f"{data_name}_{method}_fit"] = crf_calib.predict(tvec)[:,1]
+
+        #### test
+        # equal_elements = np.array_equal(results_dict[f"{data_name}_{method}_decision"], results_dict[data["name"] + "_RF_decision"])
+        # print(">>>>>>> CRF vs RF", equal_elements)
+        # print("CRF\n", results_dict[f"{data_name}_{method}_decision"])
+        # print("CRF\n", results_dict[f"{data_name}_{method}_prob"])
+        # print("RF\n", results_dict[data["name"] + "_RF_decision"])
+        # print("RF\n", results_dict[data["name"] + "_RF_prob"])
+
 
     # Venn calibrator
     method = "Venn"
@@ -353,6 +410,7 @@ def update_runs(ref_dict, new_dict):
 
 
 def mean_and_ranking_table(results_dict, metrics, calib_methods, data_list, save_results=False, mean_and_rank=True, std=False):
+
     # save results as txt
     df_dict = {}
     res = ""

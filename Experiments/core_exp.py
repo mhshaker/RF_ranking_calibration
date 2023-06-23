@@ -6,6 +6,8 @@ import Data.data_provider as dp
 import core_calib as cal
 from estimators.IR_RF_estimator import IR_RF
 from sklearn.model_selection import RandomizedSearchCV
+import numpy as np
+np.random.seed(0)
 
 
 # params
@@ -13,7 +15,7 @@ params_all = {
     # exp
     "runs": 1,
     "plot": True,
-    "calib_methods": ["RF", "Platt", "ISO", "Rank", "CRF", "VA", "Beta", "Elkan", "tlr", "Line", "RF_ens_r", "RF_large", "RF_boot"],
+    "calib_methods": ["RF", "Platt", "ISO", "Rank", "CRF", "VA", "Beta", "Elkan", "tlr", "Line", "RF_boot", "RF_ens_r", "RF_large", "RF_ens_line"],
     "metrics": ["acc", "tce", "logloss", "brier", "ece", "auc"],
     
     #data
@@ -32,15 +34,15 @@ params_all = {
 
     # calib param
     "ece_bins": 20,
-    "boot_size": 50,
-    "boot_count": 100,
+    "boot_size": 5000,
+    "boot_count": 20,
 
     # RF hyper opt
     "hyper_opt": True,
     "opt_cv":5, 
     "opt_n_iter":10,
     "search_space": {
-                    "n_estimators": [4],
+                    "n_estimators": [10],
                     "max_depth": [2,3,4,5,6,7,8,10,20,50,100],
                     "criterion": ["gini", "entropy"],
                     # "min_samples_split": [2,3,4,5],
@@ -89,14 +91,9 @@ def run_exp(exp_key, exp_values, params):
                 RS = RandomizedSearchCV(rf, params["search_space"], scoring=["accuracy"], refit="accuracy", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
                 RS.fit(data["x_train"], data["y_train"])
                 rf_best = RS.best_estimator_
-                # print("hyper_opt: best params", RS.best_params_)
             else:
                 rf_best = IR_RF(n_estimators=params["n_estimators"], oob_score=params["oob"], max_depth=params["depth"], random_state=seed)
                 rf_best.fit(data["x_train"], data["y_train"])
-
-                if params["exp_name"] == "trees":
-                    print("trees params", rf_best.get_params())
-
 
             # calibration
             res = cal.calibration(rf_best, data, params) # res is a dict with all the metrics results as well as RF probs and every calibration method decision for every test data point

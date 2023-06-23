@@ -67,7 +67,7 @@ class Boot_calib():
         for boot_index, de in zip(range(self.boot_count), depth_extention):
             model.random_state = boot_index * 100 # change the random seed to fit again
             if param_change:
-                model.max_depth = params['max_depth'] + de
+                model.n_estimators = params['n_estimators'] + de
             model.fit(x_train, y_train)
             p = model.predict_proba(x_test)
             ens.append(p.copy())
@@ -77,6 +77,33 @@ class Boot_calib():
         model.set_params(**params_org)
 
         return b
+
+
+    def predict_ens_boot(self, x_test, x_train, y_train, model, param_change=False):
+
+        ens = []
+        params = model.get_params().copy()
+        params_org = model.get_params().copy()
+
+        depth_extention = np.random.randint(low=-1, high=1, size=self.boot_count)
+
+        for boot_index, de in zip(range(self.boot_count), depth_extention):
+            model.random_state = boot_index * 100 # change the random seed to fit again
+            if param_change:
+                model.max_depth = params['max_depth'] + de
+            model.fit(x_train, y_train)
+            p = model.predict_proba(x_test)
+            ens.append(p.copy())
+        ens = np.array(ens)
+
+        RF_index = np.random.randint(low=0, high=ens.shape[0], size=self.bootstrap_size)
+        b = ens[RF_index,:,:]
+        b = np.mean(b, axis=0) # average all the bootstraps
+
+        model.set_params(**params_org)
+
+        return b
+
 
 
     def true_prob_ens(self, x_test, y_test, x_train, y_train, model, param_change=False):
