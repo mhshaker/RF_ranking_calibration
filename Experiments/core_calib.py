@@ -32,7 +32,7 @@ from sklearn.metrics import log_loss
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_curve, auc
-
+from sklearn.calibration import calibration_curve
 
 tvec = np.linspace(0.01, 0.99, 990)
 
@@ -65,9 +65,6 @@ def calibration(RF, data, params):
     # the retuen is a dict with all the metrics results as well as RF probs and every calibration method decision for every test data point
     # the structure of the keys in the dict is data_calibMethod_metric
     results_dict = {}
-    for metric in metrics:
-        for method in calib_methods:
-            results_dict[data["name"] + "_" + method + "_" + metric] = []
 
     # random forest probs
     rf_p_calib = RF.predict_proba(data["x_calib"])
@@ -144,7 +141,7 @@ def calibration(RF, data, params):
 
         crf_calib = CRF_calib(learning_method="sig_brior").fit(eb_p_calib[:,1], data["y_train"])
         ebl_p_test = crf_calib.predict(eb_p_test[:,1])
-        
+
         results_dict[f"{data_name}_{method}_prob"] = ebl_p_test
         results_dict[f"{data_name}_{method}_decision"] = np.argmax(ebl_p_test,axis=1)
 
@@ -306,33 +303,33 @@ def calibration(RF, data, params):
 
     if "acc" in metrics:
         for method in calib_methods:
-            results_dict[f"{data_name}_{method}_acc"].append(accuracy_score(data["y_test"], results_dict[f"{data_name}_{method}_decision"]))
+            results_dict[f"{data_name}_{method}_acc"] = accuracy_score(data["y_test"], results_dict[f"{data_name}_{method}_decision"])
 
     if "auc" in metrics:
         for method in calib_methods:
             fpr, tpr, thresholds = roc_curve(data["y_test"], results_dict[data["name"] + "_" + method +"_prob"][:,1])
-            results_dict[f"{data_name}_{method}_auc"].append(auc(fpr, tpr))
+            results_dict[f"{data_name}_{method}_auc"] = auc(fpr, tpr)
 
     if "ece" in metrics:
         for method in calib_methods:
-            results_dict[f"{data_name}_{method}_ece"].append(confidance_ECE(results_dict[f"{data_name}_{method}_prob"], data["y_test"], bins=params["ece_bins"]))
+            results_dict[f"{data_name}_{method}_ece"] = confidance_ECE(results_dict[f"{data_name}_{method}_prob"], data["y_test"], bins=params["ece_bins"])
 
     if "brier" in metrics:
         for method in calib_methods:
-            results_dict[f"{data_name}_{method}_brier"].append(brier_score_loss(data["y_test"], results_dict[f"{data_name}_{method}_prob"][:,1]))
+            results_dict[f"{data_name}_{method}_brier"] = brier_score_loss(data["y_test"], results_dict[f"{data_name}_{method}_prob"][:,1])
 
     if "logloss" in metrics:
         for method in calib_methods:
-            results_dict[f"{data_name}_{method}_logloss"].append(log_loss(data["y_test"], results_dict[f"{data_name}_{method}_prob"][:,1]))
+            results_dict[f"{data_name}_{method}_logloss"] = log_loss(data["y_test"], results_dict[f"{data_name}_{method}_prob"][:,1])
 
     if "tce" in metrics:
         for method in calib_methods:
-            results_dict[f"{data_name}_{method}_tce"].append(mean_squared_error(data["tp_test"], results_dict[f"{data_name}_{method}_prob"][:,1]))
+            results_dict[f"{data_name}_{method}_tce"] = mean_squared_error(data["tp_test"], results_dict[f"{data_name}_{method}_prob"][:,1])
 
     return results_dict
 
 
-def model_calibration(models, data, metrics, plot_bins = 10):
+def model_calibration(models, data, metrics, plot_bins = 10): # update this outdated function
 
     # the retuen is a dict with all the metrics results as well as RF probs and every calibration method decision for every test data point
     # the structure of the keys in the dict is data_calibMethod_metric
@@ -390,9 +387,7 @@ def update_runs(ref_dict, new_dict):
     if ref_dict == {}:
         res_dict = new_dict.copy()
         for k in new_dict.keys():
-            if "_prob" in k or "_decision" in k:
-                del res_dict[k]
-                continue
+            res_dict[k] = [res_dict[k]]
         return res_dict
     
     res_dict = ref_dict.copy()
@@ -400,10 +395,7 @@ def update_runs(ref_dict, new_dict):
     # print("res_dict keys", len(res_dict.keys()))
     # print("---------------------------------")
     for k in ref_dict.keys():
-        if "_prob" in k or "_decision" in k:
-            del res_dict[k]
-            continue
-        res_dict[k] = ref_dict[k] + new_dict[k]
+        res_dict[k] = ref_dict[k] + [new_dict[k]]
 
     return res_dict    
 
@@ -489,18 +481,56 @@ def predict_bin(prob_true, prob_pred, Y):
     calib_prob = np.array(calib_prob)
     return calib_prob
 
-def plot_probs(exp_data_name, probs, data, params, run_index, ref_plot_name="RF", hist_plot=False, calib_plot=False):
+def plot_probs(exp_data_name, probs_runs, data_runs, params, ref_plot_name="RF", hist_plot=False, calib_plot=False):
 
     calib_methods = params["calib_methods"]
+
+    # concatinate all runs
+    
     
     for method in calib_methods:
 
+        all_run_probs = np.zeros(1)
+        for prob in probs_runs[f"{exp_data_name}_{method}_prob"]:
+            if len(all_run_probs) == 1:
+                all_run_probs = prob
+            else:
+                all_run_probs = np.concatenate((all_run_probs, prob))
+
+        all_run_probs_ref = np.zeros(1)
+        for prob in probs_runs[f"{exp_data_name}_{ref_plot_name}_prob"]:
+            if len(all_run_probs_ref) == 1:
+                all_run_probs_ref = prob
+            else:
+                all_run_probs_ref = np.concatenate((all_run_probs_ref, prob))
+
+        all_run_y = np.zeros(1)
+        for data in data_runs:
+            if len(all_run_y) == 1:
+                all_run_y = data["y_test"]
+            else:
+                all_run_y = np.concatenate((all_run_y, data["y_test"]))
+
+        if params["data_name"] == "synthetic":
+            all_run_tp = np.zeros(1)
+            for data in data_runs:
+                if len(all_run_tp) == 1:
+                    all_run_tp = data["tp_test"]
+                else:
+                    all_run_tp = np.concatenate((all_run_tp, data["tp_test"]))
+        
         plt.plot([0, 1], [0, 1], linestyle='--')
         colors = ['black', 'red']
         colors_mean = ['orange', 'blue']
-        plt.scatter(data["tp_test"], probs[f"{exp_data_name}_{method}_prob"][:,1], marker='.', c=[colors[c] for c in data["y_test"].astype(int)]) # Calibrated probs
-        plt.scatter(data["tp_test"], probs[f"{exp_data_name}_{ref_plot_name}_prob"][:,1], marker='.', c=[colors[c] for c in data["y_test"].astype(int)], alpha=0.1) # faded RF probs
-
+        if params["data_name"] == "synthetic":
+            plt.scatter(all_run_tp, all_run_probs[:,1], marker='.', c=[colors[c] for c in all_run_y.astype(int)]) # Calibrated probs
+            plt.scatter(all_run_tp, all_run_probs_ref[:,1], marker='.', c=[colors[c] for c in all_run_y.astype(int)], alpha=0.1) # faded RF probs
+        else:
+            prob_true, prob_pred = calibration_curve(all_run_y, all_run_probs[:,1], n_bins=params["ece_bins"])
+            plt.scatter(prob_true, prob_pred, marker='.') # Calibrated probs
+            prob_true, prob_pred = calibration_curve(all_run_y, all_run_probs_ref[:,1], n_bins=params["ece_bins"])
+            plt.scatter(prob_true, prob_pred, marker='.', alpha=0.1) # Calibrated probs
+            
         # plt.scatter(data["tp_train"], probs[f"{exp_data_name}_{ref_plot_name}_prob_train"][:,1], marker='.', c=[colors[c] for c in data["y_train"].astype(int)]) # RF train probs 
 
 
@@ -511,19 +541,26 @@ def plot_probs(exp_data_name, probs, data, params, run_index, ref_plot_name="RF"
         # v_tce = mean_squared_error((bin_edges[:-1] + bin_edges[1:])/2, bin_means)
 
         # y = predict_bin(true_binded, bin_means, probs[f"{exp_data_name}_{method}_prob"][:,1])
-        # plt.scatter(data["tp_test"], y, marker='.', c=[colors[c] for c in data["y_test"].astype(int)]) # Calibrated probs
+        # plt.scatter(data["tp_test"], y, marker='.', c=[colors[c] for c in all_run_y.astype(int)]) # Calibrated probs
 
 
         # bin_means, bin_edges, binnumber = binned_statistic(probs[f"{exp_data_name}_{method}_prob"][:,1], data["tp_test"], bins=100) # Horizantal Mean of the calibrated probs
         # plt.scatter((bin_edges[:-1] + bin_edges[1:])/2, bin_means, label='binned statistic of data')
         # h_tce = mean_squared_error((bin_edges[:-1] + bin_edges[1:])/2, bin_means)
         # ##################
-        
-        calib_tce = mean_squared_error(data["tp_test"], probs[f"{exp_data_name}_{method}_prob"][:,1]) # calculate TCE to add to the calib method plot
+        if params["data_name"] == "synthetic":
+            calib_tce = mean_squared_error(all_run_tp, all_run_probs[:,1]) # calculate TCE to add to the calib method plot
+            leg_txt = f" (TCE {calib_tce:0.5f})"
+        else:
+            # print("exp_data_name", exp_data_name)
+            # print("method", method)
+            # print("prob shape", probs[f"{exp_data_name}_{method}_prob"].shape)
+            calib_ece = confidance_ECE(all_run_probs, all_run_y, bins=params["ece_bins"])
+            leg_txt = f" (ECE {calib_ece:0.5f})"
         # calib_tce = mean_squared_error(data["tp_test"], y) # calculate TCE to add to the calib method plot
         
         if (method == "ISO" or method == "CRF" or method == "Line" or method == "Platt" or method =="Beta" or method =="VA") and calib_plot:
-            plt.plot(tvec, probs[f"{exp_data_name}_{method}_fit"], c="blue")
+            plt.plot(tvec, probs_runs[f"{exp_data_name}_{method}_fit"][0], c="blue")
         plt.xlabel(f"True probability")
         plt.ylabel("Predicted probability")
 
@@ -531,15 +568,15 @@ def plot_probs(exp_data_name, probs, data, params, run_index, ref_plot_name="RF"
         red_patch = plt.plot([],[], marker='o', markersize=10, color='red', linestyle='')[0]
         black_patch = plt.plot([],[], marker='o', markersize=10, color='black', linestyle='')[0]
         calib_patch = plt.plot([],[], marker='_', markersize=15, color='blue', linestyle='')[0]
-        plt.legend((red_patch, black_patch, calib_patch), ('Class 1', 'Class 0', method + f" (TCE {calib_tce:0.5f})"))
-        path = f"./results/{params['exp_name']}/{run_index}/{method}"
+        plt.legend((red_patch, black_patch, calib_patch), ('Class 1', 'Class 0', method + leg_txt))
+        path = f"./results/{params['exp_name']}/{method}"
         if not os.path.exists(path):
             os.makedirs(path)
         plt.savefig(f"{path}/{method}_{exp_data_name}.png")
         plt.close()
 
         if hist_plot:
-            plt.hist(probs[f"{exp_data_name}_{method}_prob"][:,1], bins=50)
+            plt.hist(all_run_probs[:,1], bins=50)
             plt.xlabel(f"probability output of {method}")
             plt.savefig(f"{path}/{method}_{exp_data_name}_hist.png")
             plt.close()
