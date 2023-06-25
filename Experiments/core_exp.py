@@ -59,7 +59,7 @@ params_all = {
 def run_exp(exp_key, exp_values, params):
 
     data_list = []
-    calib_results_dict = {}
+    exp_res = {}
 
     for exp_param in exp_values: 
         params[exp_key] = exp_param
@@ -77,14 +77,16 @@ def run_exp(exp_key, exp_values, params):
         else:
             X, y = dp.load_data(params["data_name"], "../../")
 
-        data_dict = {} # results for each data set will be saved in here.
+        res_runs = {} # results for each data set will be saved in here.
+        data_run_split_list = []
         for seed in range(params["runs"]): # running the same dataset multiple times
+            params["run_index"] = seed
             # split the data
             if params["data_name"] == "synthetic":
                 data = cal.split_train_calib_test(exp_data_name, X, y, params["test_split"], params["calib_split"], seed, tp)
             else:
                 data = cal.split_train_calib_test(exp_data_name, X, y, params["test_split"], params["calib_split"], seed)
-
+            data_run_split_list.append(data)
             # train model - hyper opt
             if params["hyper_opt"]:
                 rf = IR_RF(random_state=seed)
@@ -97,10 +99,10 @@ def run_exp(exp_key, exp_values, params):
 
             # calibration
             res = cal.calibration(rf_best, data, params) # res is a dict with all the metrics results as well as RF probs and every calibration method decision for every test data point
-            data_dict = cal.update_runs(data_dict, res) # calib results for every run for the same dataset is aggregated in data_dict (ex. acc of every run as an array)
-            if params["plot"] and params["data_name"] == "synthetic":
-                cal.plot_probs(exp_data_name, res, data, params, seed, "RF", False, True) 
-
-        calib_results_dict.update(data_dict) # merge results of all datasets together
-    return calib_results_dict, data_list
+            res_runs = cal.update_runs(res_runs, res) # calib results for every run for the same dataset is aggregated in res_runs (ex. acc of every run as an array)
+        if params["plot"]: # and params["data_name"] == "synthetic":
+            cal.plot_probs(exp_data_name, res_runs, data_run_split_list, params, "RF", False, True) 
+        
+        exp_res.update(res_runs) # merge results of all datasets together
+    return exp_res, data_list
         
