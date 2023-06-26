@@ -33,6 +33,7 @@ from sklearn.metrics import mean_squared_error
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_curve, auc
 from sklearn.calibration import calibration_curve
+from sklearn.model_selection import StratifiedKFold
 
 tvec = np.linspace(0.01, 0.99, 990)
 
@@ -57,6 +58,30 @@ def split_train_calib_test(name, X, y, test_size, calib_size, orig_seed=0, tp=np
             break
 
     return data
+
+def CV_split_train_calib_test(name, X, y, folds=10, seed=0, tp=np.zeros(10)):
+    
+    data_folds = []
+    skf = StratifiedKFold(n_splits=folds, shuffle=True, random_state=seed)
+
+    for train_calib_index, test_index in skf.split(X, y):
+        data = {"name": name }
+        X_train_calib, data["x_test"] = X[train_calib_index], X[test_index]
+        y_train_calib, data["y_test"] = y[train_calib_index], y[test_index]
+        if not tp.all() == 0:
+            tp_train_calib, data["tp_test"] = tp[train_calib_index], tp[test_index]
+
+        skf2 = StratifiedKFold(n_splits=folds-1, shuffle=True, random_state=seed)
+        train_index, calib_index = next(skf2.split(X_train_calib, y_train_calib))
+        data["x_train"], data["x_calib"] = X[train_index], X[calib_index]
+        data["y_train"], data["y_calib"] = y[train_index], y[calib_index]
+        if not tp.all() == 0:
+            data["tp_train"], data["tp_calib"] = tp[train_index], tp[calib_index]
+        
+        data_folds.append(data)
+
+    return data_folds
+
 
 def calibration(RF, data, params):
     data_name = data["name"]
@@ -141,6 +166,18 @@ def calibration(RF, data, params):
 
         crf_calib = CRF_calib(learning_method="sig_brior").fit(eb_p_calib[:,1], data["y_train"])
         ebl_p_test = crf_calib.predict(eb_p_test[:,1])
+
+        results_dict[f"{data_name}_{method}_prob"] = ebl_p_test
+        results_dict[f"{data_name}_{method}_decision"] = np.argmax(ebl_p_test,axis=1)
+
+    method = "RF_ens_Platt"
+    if method in calib_methods:
+        bc = Boot_calib(boot_count=params["boot_count"])
+        eb_p_test = bc.predict_ens(data["x_test"], data["x_train"], data["y_train"], RF)
+        eb_p_calib = bc.predict_ens(data["x_train"], data["x_train"], data["y_train"], RF)
+
+        plat_calib = _SigmoidCalibration().fit(eb_p_calib[:,1], data["y_train"])
+        ebl_p_test = convert_prob_2D(plat_calib.predict(eb_p_test[:,1]))
 
         results_dict[f"{data_name}_{method}_prob"] = ebl_p_test
         results_dict[f"{data_name}_{method}_decision"] = np.argmax(ebl_p_test,axis=1)
@@ -483,6 +520,8 @@ def predict_bin(prob_true, prob_pred, Y):
 
 def plot_probs(exp_data_name, probs_runs, data_runs, params, ref_plot_name="RF", hist_plot=False, calib_plot=False):
 
+    # params["data_name"] = "reset"
+    
     calib_methods = params["calib_methods"]
 
     # concatinate all runs
@@ -572,7 +611,7 @@ def plot_probs(exp_data_name, probs_runs, data_runs, params, ref_plot_name="RF",
         path = f"./results/{params['exp_name']}/{method}"
         if not os.path.exists(path):
             os.makedirs(path)
-        plt.savefig(f"{path}/{method}_{exp_data_name}.png")
+        plt.savefig(f"{path}/{exp_data_name}_{method}.png")
         plt.close()
 
         if hist_plot:

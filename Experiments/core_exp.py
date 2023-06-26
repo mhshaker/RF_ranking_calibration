@@ -103,6 +103,10 @@ def run_exp(exp_key, exp_values, params):
         if params["plot"]: # and params["data_name"] == "synthetic":
             cal.plot_probs(exp_data_name, res_runs, data_run_split_list, params, "RF", False, True) 
         
+        # if params["plot"]: # and params["data_name"] == "synthetic":
+        #     params["data_name"] = "ece"
+        #     cal.plot_probs(exp_data_name, res_runs, data_run_split_list, params, "RF", False, True) 
+        
         exp_res.update(res_runs) # merge results of all datasets together
     return exp_res, data_list
         
