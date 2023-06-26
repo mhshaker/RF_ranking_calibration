@@ -7,6 +7,8 @@ import core_calib as cal
 from estimators.IR_RF_estimator import IR_RF
 from sklearn.model_selection import RandomizedSearchCV
 import numpy as np
+from joblib import Parallel, delayed
+
 np.random.seed(0)
 
 
@@ -28,6 +30,7 @@ params_all = {
     "class2_mean_min":1, 
     "class2_mean_max":3, 
 
+    "cv_folds": 10,
     "test_split": 0.3,
     "calib_split": 0.1,
 
@@ -55,11 +58,61 @@ params_all = {
 
 }
 
+def train_calib(data, params, seed):
+    # train model - hyper opt
+    if params["hyper_opt"]:
+        rf = IR_RF(random_state=seed)
+        RS = RandomizedSearchCV(rf, params["search_space"], scoring=["accuracy"], refit="accuracy", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
+        RS.fit(data["x_train"], data["y_train"])
+        rf_best = RS.best_estimator_
+    else:
+        rf_best = IR_RF(n_estimators=params["n_estimators"], oob_score=params["oob"], max_depth=params["depth"], random_state=seed)
+        rf_best.fit(data["x_train"], data["y_train"])
 
+    # calibration
+    return cal.calibration(rf_best, data, params) # res is a dict with all the metrics results as well as RF probs and every calibration method decision for every test data point
+
+def exp(exp_key, exp_param, params, seed):
+    params[exp_key] = exp_param
+    # Data
+    exp_data_name = str(exp_param) # data_name + "_" + 
+
+    if params["data_name"] == "synthetic":
+        X, y, tp = dp.make_classification_gaussian_with_true_prob(params["data_size"], 
+                                                                params["n_features"], 
+                                                                class1_mean_min = params["class1_mean_min"], 
+                                                                class1_mean_max = params["class1_mean_max"],
+                                                                class2_mean_min = params["class2_mean_min"], 
+                                                                class2_mean_max = params["class2_mean_max"], 
+                                                                seed=0)
+        data_folds = cal.CV_split_train_calib_test(exp_data_name, X,y,params["cv_folds"],seed,tp)
+    else:
+        X, y = dp.load_data(params["data_name"], "../../")
+        data_folds = cal.CV_split_train_calib_test(exp_data_name, X,y,params["cv_folds"],seed)
+
+    # for data in data_folds: # running the same dataset multiple times
+    res_list = Parallel(n_jobs=-1)(delayed(train_calib)(data, params, seed) for data, params, seed in zip(data_folds, np.repeat(params, params["cv_folds"]), np.repeat(seed, params["cv_folds"])))
+    
+    res_runs = {} # results for each data set will be saved in here.
+    for res in res_list:
+        res_runs = cal.update_runs(res_runs, res) # calib results for every run for the same dataset is aggregated in res_runs (ex. acc of every run as an array)
+
+    if params["plot"]: # and params["data_name"] == "synthetic":
+        cal.plot_probs(exp_data_name, res_runs, data_folds, params, "RF", False, True) 
+    
+    return res_runs, exp_data_name
+    
 def run_exp(exp_key, exp_values, params):
 
-    data_list = []
+    seed = 0
     exp_res = {}
+    
+    # res_runs_list, data_list = Parallel(n_jobs=-1)(delayed(exp)(exp_key, exp_param, params, seed) for exp_key, exp_param, params, seed in zip(np.repeat(exp_key, len(exp_values)), exp_values, np.repeat(params, len(exp_values)), np.repeat(seed, len(exp_values))))
+
+    # for res_runs in res_runs_list:
+    #     exp_res.update(res_runs)
+
+    data_list = []
 
     for exp_param in exp_values: 
         params[exp_key] = exp_param
@@ -74,39 +127,28 @@ def run_exp(exp_key, exp_values, params):
                                                                     class2_mean_min = params["class2_mean_min"], 
                                                                     class2_mean_max = params["class2_mean_max"], 
                                                                     seed=0)
+            data_folds = cal.CV_split_train_calib_test(exp_data_name, X,y,params["cv_folds"],seed,tp)
         else:
             X, y = dp.load_data(params["data_name"], "../../")
+            data_folds = cal.CV_split_train_calib_test(exp_data_name, X,y,params["cv_folds"],seed)
 
+        # for data in data_folds: # running the same dataset multiple times
+        res_list = Parallel(n_jobs=-1)(delayed(train_calib)(data, params, seed) for data, params, seed in zip(data_folds, np.repeat(params, params["cv_folds"]), np.repeat(seed, params["cv_folds"])))
+        
         res_runs = {} # results for each data set will be saved in here.
-        data_run_split_list = []
-        for seed in range(params["runs"]): # running the same dataset multiple times
-            params["run_index"] = seed
-            # split the data
-            if params["data_name"] == "synthetic":
-                data = cal.split_train_calib_test(exp_data_name, X, y, params["test_split"], params["calib_split"], seed, tp)
-            else:
-                data = cal.split_train_calib_test(exp_data_name, X, y, params["test_split"], params["calib_split"], seed)
-            data_run_split_list.append(data)
-            # train model - hyper opt
-            if params["hyper_opt"]:
-                rf = IR_RF(random_state=seed)
-                RS = RandomizedSearchCV(rf, params["search_space"], scoring=["accuracy"], refit="accuracy", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
-                RS.fit(data["x_train"], data["y_train"])
-                rf_best = RS.best_estimator_
-            else:
-                rf_best = IR_RF(n_estimators=params["n_estimators"], oob_score=params["oob"], max_depth=params["depth"], random_state=seed)
-                rf_best.fit(data["x_train"], data["y_train"])
-
-            # calibration
-            res = cal.calibration(rf_best, data, params) # res is a dict with all the metrics results as well as RF probs and every calibration method decision for every test data point
+        for res in res_list:
             res_runs = cal.update_runs(res_runs, res) # calib results for every run for the same dataset is aggregated in res_runs (ex. acc of every run as an array)
+
         if params["plot"]: # and params["data_name"] == "synthetic":
-            cal.plot_probs(exp_data_name, res_runs, data_run_split_list, params, "RF", False, True) 
+            cal.plot_probs(exp_data_name, res_runs, data_folds, params, "RF", False, True) 
         
         # if params["plot"]: # and params["data_name"] == "synthetic":
+        #     tmp = params["data_name"]
         #     params["data_name"] = "ece"
-        #     cal.plot_probs(exp_data_name, res_runs, data_run_split_list, params, "RF", False, True) 
+        #     cal.plot_probs(exp_data_name, res_runs, data_folds, params, "RF", False, True) 
+        #     params["data_name"] = tmp
         
         exp_res.update(res_runs) # merge results of all datasets together
+
     return exp_res, data_list
         
