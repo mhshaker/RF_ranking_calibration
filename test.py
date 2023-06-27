@@ -1,11 +1,13 @@
 import numpy as np
-import math
-import time
-from joblib import Parallel, delayed
+import Data.data_provider as dp
+from estimators.IR_RF_estimator import IR_RF
 
-def func(x,y):
-    return math.factorial(x) + y
+data_name = "Customer_Churn"
+X, y = dp.load_data(data_name)
 
-res = [1]
-res = Parallel(n_jobs=-1)(delayed(func)(x,y) for x,y in zip(range(10000), range(10000)))
-print("res", len(res))
+rf = IR_RF()
+rf.fit(X, y)
+acc = rf.score(X,y)
+
+
+print("acc", np.unique(y))
