@@ -13,6 +13,7 @@ class Elkan_calib(BaseEstimator, ClassifierMixin):
     def predict(self, X):
 
         elkan_p = (self.b_calib * X - self.b_train * self.b_calib * X) / (self.b_calib * X + self.b_train - self.b_train * X - self.b_train * self.b_calib)
+        elkan_p = np.clip(elkan_p, 0, 1)
         probs = convert_prob_2D(elkan_p)
 
         return probs
