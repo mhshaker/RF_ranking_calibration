@@ -118,7 +118,7 @@ def calibration(RF, data, params):
             RS_f.fit(data["x_train_calib"], data["y_train_calib"])
             RF_f = RS_f.best_estimator_
         else:
-            RF_f = IR_RF(n_estimators=params["n_estimators"], oob_score=params["oob"], max_depth=params["depth"], random_state=params["seed"])
+            RF_f = IR_RF(n_estimators=params["n_estimators"], max_depth=params["depth"], random_state=params["seed"])
             RF_f.fit(data["x_train_calib"], data["y_train_calib"])
 
         rff_p_test = RF_f.predict_proba(data["x_test"])
@@ -389,7 +389,9 @@ def calibration(RF, data, params):
 
     if "ece" in metrics:
         for method in calib_methods:
-            results_dict[f"{data_name}_{method}_ece"] = confidance_ECE(results_dict[f"{data_name}_{method}_prob"], data["y_test"], bins=params["ece_bins"])
+            pt, pp = calibration_curve(data["y_test"], results_dict[f"{data_name}_{method}_prob"][:,1], n_bins=params["ece_bins"], strategy=params["bin_strategy"])
+            results_dict[f"{data_name}_{method}_ece"] = mean_squared_error(pt, pp)
+            # results_dict[f"{data_name}_{method}_ece"] = confidance_ECE(results_dict[f"{data_name}_{method}_prob"], data["y_test"], bins=params["ece_bins"])
 
     if "brier" in metrics:
         for method in calib_methods:
@@ -605,10 +607,10 @@ def plot_probs(exp_data_name, probs_runs, data_runs, params, ref_plot_name="RF",
             plt.scatter(all_run_tp, all_run_probs[:,1], marker='.', c=[colors[c] for c in all_run_y.astype(int)]) # Calibrated probs
             plt.scatter(all_run_tp, all_run_probs_ref[:,1], marker='.', c=[colors[c] for c in all_run_y.astype(int)], alpha=0.1) # faded RF probs
         else:
-            prob_true, prob_pred = calibration_curve(all_run_y, all_run_probs[:,1], n_bins=params["ece_bins"])
+            prob_true, prob_pred = calibration_curve(all_run_y, all_run_probs[:,1], n_bins=params["ece_bins"], strategy=params["bin_strategy"])
             plt.scatter(prob_true, prob_pred, marker='.', c='darkblue') # Calibrated probs
-            prob_true, prob_pred = calibration_curve(all_run_y, all_run_probs_ref[:,1], n_bins=params["ece_bins"])
-            plt.scatter(prob_true, prob_pred, marker='.', alpha=0.2, c="gray") # Calibrated probs
+            prob_true_ref, prob_pred_ref = calibration_curve(all_run_y, all_run_probs_ref[:,1], n_bins=params["ece_bins"], strategy=params["bin_strategy"])
+            plt.scatter(prob_true_ref, prob_pred_ref, marker='.', alpha=0.2, c="gray") # Calibrated probs
             
         # plt.scatter(data["tp_train"], probs[f"{exp_data_name}_{ref_plot_name}_prob_train"][:,1], marker='.', c=[colors[c] for c in data["y_train"].astype(int)]) # RF train probs 
 
@@ -629,16 +631,20 @@ def plot_probs(exp_data_name, probs_runs, data_runs, params, ref_plot_name="RF",
         # ##################
         if params["data_name"] == "synthetic":
             calib_tce = mean_squared_error(all_run_tp, all_run_probs[:,1]) # calculate TCE to add to the calib method plot
-            leg_txt = f" (TCE {calib_tce:0.5f})"
+            calib_tce_ref = mean_squared_error(all_run_tp, all_run_probs_ref[:,1]) # calculate TCE to add to the calib method plot
+            tce_txt = f" (TCE {calib_tce:0.5f})"
+            tce_ref = f" (TCE {calib_tce_ref:0.5f})"
         else:
             # print("exp_data_name", exp_data_name)
             # print("method", method)
             # print("prob shape", probs[f"{exp_data_name}_{method}_prob"].shape)
-            calib_ece = confidance_ECE(all_run_probs, all_run_y, bins=params["ece_bins"])
+            calib_ece = mean_squared_error(prob_true, prob_pred) # confidance_ECE(all_run_probs, all_run_y, bins=params["ece_bins"])
+            calib_ece_ref = mean_squared_error(prob_true_ref, prob_pred_ref) # confidance_ECE(all_run_probs_ref, all_run_y, bins=params["ece_bins"])
             if corrct_ece:
                 probs_runs[f"{exp_data_name}_{method}_ece"] = [calib_ece]
 
-            leg_txt = f" (ECE {calib_ece:0.5f})"
+            ece_txt = f" (ECE {calib_ece:0.5f})"
+            ece_ref = f" (ECE {calib_ece_ref:0.5f})"
         # calib_tce = mean_squared_error(data["tp_test"], y) # calculate TCE to add to the calib method plot
         
         if (method == "ISO" or method == "CRF" or method == "Line" or method == "Platt" or method =="Beta" or method =="VA") and calib_plot:
@@ -651,16 +657,20 @@ def plot_probs(exp_data_name, probs_runs, data_runs, params, ref_plot_name="RF",
             red_patch = plt.plot([],[], marker='o', markersize=10, color='red', linestyle='')[0]
             black_patch = plt.plot([],[], marker='o', markersize=10, color='black', linestyle='')[0]
             calib_patch = plt.plot([],[], marker='_', markersize=15, color='blue', linestyle='')[0]
-            plt.legend((red_patch, black_patch, calib_patch), ('Class 1', 'Class 0', method + leg_txt))
+            plt.legend((red_patch, black_patch, calib_patch), ('Class 1', 'Class 0', method + tce_txt+ " RF"+ tce_ref))
         else:
             orchid_patch = plt.plot([],[], marker='o', markersize=10, color='darkblue', linestyle='')[0]
             gray_patch = plt.plot([],[], marker='o', markersize=10, color='gray', linestyle='')[0]
             calib_patch = plt.plot([],[], marker='_', markersize=15, color='blue', linestyle='')[0]
-            plt.legend((orchid_patch, gray_patch, calib_patch), (method + leg_txt, 'RF', method + "fit"))
+            plt.legend((orchid_patch, gray_patch, calib_patch), (method + ece_txt, 'RF' + ece_ref, method + " fit"))
         path = f"./results/{params['exp_name']}/{method}"
         if not os.path.exists(path):
             os.makedirs(path)
-        plt.savefig(f"{path}/{exp_data_name}_{method}.png")
+
+        if params["data_name"] == "synthetic":
+            plt.savefig(f"{path}/{exp_data_name}_{method}_s.png")
+        else:
+            plt.savefig(f"{path}/{exp_data_name}_{method}.png")
         plt.close()
 
         if hist_plot:
