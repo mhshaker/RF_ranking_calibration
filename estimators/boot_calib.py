@@ -60,21 +60,18 @@ class Boot_calib():
 
         ens = []
         params = model.get_params().copy()
-        params_org = model.get_params().copy()
 
         depth_extention = np.random.randint(low=-1, high=1, size=self.boot_count)
 
         for boot_index, de in zip(range(self.boot_count), depth_extention):
-            model.random_state = boot_index * 100 # change the random seed to fit again
+            params["random_state"] = boot_index * 100
             if param_change:
-                model.n_estimators = params['n_estimators'] + de
-            model.fit(x_train, y_train)
-            p = model.predict_proba(x_test)
+                params['n_estimators'] += de
+            rf_ens = IR_RF(**params).fit(x_train, y_train)
+            p = rf_ens.predict_proba(x_test)
             ens.append(p.copy())
         ens = np.array(ens)
         b = np.mean(ens, axis=0) # average all the ens
-
-        model.set_params(**params_org)
 
         return b
 
@@ -145,16 +142,12 @@ class Boot_calib():
 
     def predict_largeRF(self, x_test, x_train, y_train, model):
 
-        ens = []
         params = model.get_params().copy()
-        params_org = model.get_params().copy()
+        params['n_estimators'] = params['n_estimators'] * self.boot_count
 
-        model.n_estimators = params['n_estimators'] * self.boot_count
+        rf_l = IR_RF(**params).fit(x_train, y_train)
+        p = rf_l.predict_proba(x_test)
 
-        model.fit(x_train, y_train)
-        p = model.predict_proba(x_test)
-
-        model.set_params(**params_org)
         return p
 
 
