@@ -8,6 +8,7 @@ from estimators.IR_RF_estimator import IR_RF
 from sklearn.model_selection import RandomizedSearchCV
 import numpy as np
 from joblib import Parallel, delayed
+from sklearn.dummy import DummyClassifier
 
 np.random.seed(0)
 
@@ -58,7 +59,7 @@ params_all = {
 
 }
 
-def train_calib(data, params, seed):
+def train_calib(data, params, seed, check_dummy=False):
     # train model - hyper opt
     if params["hyper_opt"]:
         rf = IR_RF(random_state=seed)
@@ -69,49 +70,23 @@ def train_calib(data, params, seed):
         rf_best = IR_RF(n_estimators=params["n_estimators"], oob_score=params["oob"], max_depth=params["depth"], random_state=seed)
         rf_best.fit(data["x_train"], data["y_train"])
 
+    if check_dummy:
+        dummy_clf = DummyClassifier(strategy="most_frequent").fit(data["x_train"], data["y_train"])
+        d_s = dummy_clf.score(data["x_test"], data["y_test"])
+        rf_best_s = rf_best.score(data["x_test"], data["y_test"])
+        l_dif = (rf_best_s - d_s ) * 100
+        # print(f"data {data['name']} learn diff {rf_best_s - d_s}")
+        if l_dif <= 1:
+            print(f">>>>>>> data {data['name']} NOT LEARNING - learnign diff is {l_dif}")
+
+
     # calibration
     return cal.calibration(rf_best, data, params) # res is a dict with all the metrics results as well as RF probs and every calibration method decision for every test data point
 
-def exp(exp_key, exp_param, params, seed):
-    params[exp_key] = exp_param
-    # Data
-    exp_data_name = str(exp_param) # data_name + "_" + 
-
-    if params["data_name"] == "synthetic":
-        X, y, tp = dp.make_classification_gaussian_with_true_prob(params["data_size"], 
-                                                                params["n_features"], 
-                                                                class1_mean_min = params["class1_mean_min"], 
-                                                                class1_mean_max = params["class1_mean_max"],
-                                                                class2_mean_min = params["class2_mean_min"], 
-                                                                class2_mean_max = params["class2_mean_max"], 
-                                                                seed=0)
-        data_folds = cal.CV_split_train_calib_test(exp_data_name, X,y,params["cv_folds"],seed,tp)
-    else:
-        X, y = dp.load_data(params["data_name"], "../../")
-        data_folds = cal.CV_split_train_calib_test(exp_data_name, X,y,params["cv_folds"],seed)
-
-    # for data in data_folds: # running the same dataset multiple times
-    res_list = Parallel(n_jobs=-1)(delayed(train_calib)(data, params, seed) for data, params, seed in zip(data_folds, np.repeat(params, params["cv_folds"]), np.repeat(seed, params["cv_folds"])))
-    
-    res_runs = {} # results for each data set will be saved in here.
-    for res in res_list:
-        res_runs = cal.update_runs(res_runs, res) # calib results for every run for the same dataset is aggregated in res_runs (ex. acc of every run as an array)
-
-    if params["plot"]: # and params["data_name"] == "synthetic":
-        cal.plot_probs(exp_data_name, res_runs, data_folds, params, "RF", False, True) 
-    
-    return res_runs, exp_data_name
     
 def run_exp(exp_key, exp_values, params):
 
-    seed = 0
     exp_res = {}
-    
-    # res_runs_list, data_list = Parallel(n_jobs=-1)(delayed(exp)(exp_key, exp_param, params, seed) for exp_key, exp_param, params, seed in zip(np.repeat(exp_key, len(exp_values)), exp_values, np.repeat(params, len(exp_values)), np.repeat(seed, len(exp_values))))
-
-    # for res_runs in res_runs_list:
-    #     exp_res.update(res_runs)
-
     data_list = []
 
     for exp_param in exp_values: 
@@ -126,14 +101,14 @@ def run_exp(exp_key, exp_values, params):
                                                                     class1_mean_max = params["class1_mean_max"],
                                                                     class2_mean_min = params["class2_mean_min"], 
                                                                     class2_mean_max = params["class2_mean_max"], 
-                                                                    seed=0)
-            data_folds = cal.CV_split_train_calib_test(exp_data_name, X,y,params["cv_folds"],seed,tp)
+                                                                    seed=params["seed"])
+            data_folds = cal.CV_split_train_calib_test(exp_data_name, X,y,params["cv_folds"],params["seed"],tp)
         else:
             X, y = dp.load_data(params["data_name"], "../../")
-            data_folds = cal.CV_split_train_calib_test(exp_data_name, X,y,params["cv_folds"],seed)
+            data_folds = cal.CV_split_train_calib_test(exp_data_name, X,y,params["cv_folds"],params["seed"])
 
         # for data in data_folds: # running the same dataset multiple times
-        res_list = Parallel(n_jobs=-1)(delayed(train_calib)(data, params, seed) for data, params, seed in zip(data_folds, np.repeat(params, params["cv_folds"]), np.repeat(seed, params["cv_folds"])))
+        res_list = Parallel(n_jobs=-1)(delayed(train_calib)(data, params, seed) for data, params, seed in zip(data_folds, np.repeat(params, params["cv_folds"]), np.repeat(params["seed"], params["cv_folds"])))
         
         res_runs = {} # results for each data set will be saved in here.
         for res in res_list:
