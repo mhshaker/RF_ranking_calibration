@@ -67,7 +67,7 @@ def train_calib(data, params, seed, check_dummy=False):
         RS.fit(data["x_train"], data["y_train"])
         rf_best = RS.best_estimator_
     else:
-        rf_best = IR_RF(n_estimators=params["n_estimators"], oob_score=params["oob"], max_depth=params["depth"], random_state=seed)
+        rf_best = IR_RF(n_estimators=params["n_estimators"], max_depth=params["depth"], random_state=seed)
         rf_best.fit(data["x_train"], data["y_train"])
 
     if check_dummy:
@@ -117,11 +117,11 @@ def run_exp(exp_key, exp_values, params):
         if params["plot"]: # and params["data_name"] == "synthetic":
             cal.plot_probs(exp_data_name, res_runs, data_folds, params, "RF", False, True) 
         
-        # if params["plot"]: # and params["data_name"] == "synthetic":
-        #     tmp = params["data_name"]
-        #     params["data_name"] = "ece"
-        #     cal.plot_probs(exp_data_name, res_runs, data_folds, params, "RF", False, True) 
-        #     params["data_name"] = tmp
+        if params["plot"] and params["data_name"] == "synthetic":
+            tmp = params["data_name"]
+            params["data_name"] = tmp + "ece"
+            cal.plot_probs(exp_data_name, res_runs, data_folds, params, "RF", False, True) 
+            params["data_name"] = tmp
         
         exp_res.update(res_runs) # merge results of all datasets together
 
