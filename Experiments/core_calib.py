@@ -220,6 +220,14 @@ def calibration(RF, data, params):
         results_dict[f"{data_name}_{method}_prob"] = ebl_p_test
         results_dict[f"{data_name}_{method}_decision"] = np.argmax(ebl_p_test,axis=1)
 
+    method = "RF_large_CRF"
+    if method in calib_methods:
+        crf_calib = CRF_calib(learning_method="sig_brior").fit(RF_large_p_calib[:,1], data["y_calib"])
+        ebl_p_test = crf_calib.predict(RF_large_p_test[:,1])
+
+        results_dict[f"{data_name}_{method}_prob"] = ebl_p_test
+        results_dict[f"{data_name}_{method}_decision"] = np.argmax(ebl_p_test,axis=1)
+
     method = "RF_large_Platt"
     if method in calib_methods:
         plat_calib = _SigmoidCalibration().fit(RF_large_p_calib[:,1], data["y_calib"])
@@ -657,12 +665,15 @@ def plot_probs(exp_data_name, probs_runs, data_runs, params, ref_plot_name="RF",
             red_patch = plt.plot([],[], marker='o', markersize=10, color='red', linestyle='')[0]
             black_patch = plt.plot([],[], marker='o', markersize=10, color='black', linestyle='')[0]
             calib_patch = plt.plot([],[], marker='_', markersize=15, color='blue', linestyle='')[0]
-            plt.legend((red_patch, black_patch, calib_patch), ('Class 1', 'Class 0', method + tce_txt+ " RF"+ tce_ref))
+            if method == ref_plot_name:
+                plt.legend((red_patch, black_patch, calib_patch), ('Class 1', 'Class 0', method + tce_txt), loc='upper left')
+            else:
+                plt.legend((red_patch, black_patch, calib_patch), ('Class 1', 'Class 0', method + tce_txt+ " RF"+ tce_ref), loc='upper left')
         else:
             orchid_patch = plt.plot([],[], marker='o', markersize=10, color='darkblue', linestyle='')[0]
             gray_patch = plt.plot([],[], marker='o', markersize=10, color='gray', linestyle='')[0]
             calib_patch = plt.plot([],[], marker='_', markersize=15, color='blue', linestyle='')[0]
-            plt.legend((orchid_patch, gray_patch, calib_patch), (method + ece_txt, 'RF' + ece_ref, method + " fit"))
+            plt.legend((orchid_patch, gray_patch, calib_patch), (method + ece_txt, 'RF' + ece_ref, method + " fit"), loc='upper left')
         path = f"./results/{params['exp_name']}/{method}"
         if not os.path.exists(path):
             os.makedirs(path)
