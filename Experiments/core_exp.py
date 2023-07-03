@@ -47,10 +47,11 @@ params_all = {
     "opt_n_iter":10,
     "search_space": {
                     "n_estimators": [10],
-                    "max_depth": [2,3,4,5,6,7,8,10,20,50,100],
+                    "max_depth": [2,3,4,5,6,7,8,10,15,20,30,40,50,60,100],
                     "criterion": ["gini", "entropy"],
-                    # "min_samples_split": [2,3,4,5],
-                    # "min_samples_leaf": [1,2,3],
+                    "max_features": ["sqrt", "log2", "None"],
+                    "min_samples_split": [2,3,4,5],
+                    "min_samples_leaf": [1,2,3],
                     },
     # RF
     "depth": 4,
@@ -66,6 +67,14 @@ def train_calib(data, params, seed, check_dummy=False):
         RS = RandomizedSearchCV(rf, params["search_space"], scoring=["accuracy"], refit="accuracy", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
         RS.fit(data["x_train"], data["y_train"])
         rf_best = RS.best_estimator_
+
+        opt_params = np.array(RS.cv_results_['params'])
+        opt_rankings = np.array(RS.cv_results_['rank_test_accuracy'])
+
+        sorted_indices = np.argsort(opt_rankings)
+        opt_params = opt_params[sorted_indices]
+        params["opt_top_K"] = opt_params[:params["opt_top_K"]] # save the top K best performing RF params in opt_top_K
+
     else:
         rf_best = IR_RF(n_estimators=params["n_estimators"], max_depth=params["depth"], random_state=seed)
         rf_best.fit(data["x_train"], data["y_train"])
