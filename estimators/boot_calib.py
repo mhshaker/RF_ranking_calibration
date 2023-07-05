@@ -75,6 +75,20 @@ class Boot_calib():
 
         return b
 
+    def predict_ens_params(self, x_test, x_train, y_train, hyper_params, seed):
+
+        ens = []
+
+        for params in hyper_params:
+            rf_ens = IR_RF(**params, random_state=seed).fit(x_train, y_train)
+            p = rf_ens.predict_proba(x_test)
+            ens.append(p.copy())
+        ens = np.array(ens)
+        b = np.mean(ens, axis=0) # average all the ens
+
+        return b
+
+
 
     def predict_ens_boot(self, x_test, x_train, y_train, model, param_change=False):
 
