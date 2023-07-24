@@ -11,6 +11,8 @@ from sklearn import preprocessing
 from scipy.io import arff
 from sklearn.datasets import make_blobs
 from sklearn.linear_model import LogisticRegression
+from sklearn.datasets import make_classification
+
 
 def unpickle(file): # for reading the CIFAR dataset
     import pickle
@@ -141,7 +143,56 @@ def load_arff_2(data_name):
 
 from scipy.stats import multivariate_normal
 
-def make_classification_gaussian_with_true_prob(n_samples, n_features, class1_mean_min=0, class1_mean_max=1, class1_cov_min=1, class1_cov_max=2, class2_mean_min=0, class2_mean_max=1, class2_cov_min=1, class2_cov_max=2, seed=0):
+def x_y_q(X, n_copy=50): # create true probability with repeating X instances n_copy times with different labels assigned by a random choice with prob p drawn from uniform dirstribution
+	n_features = X.shape[1]
+	n_samples = len(X)
+
+	P = np.random.uniform(0,1,n_samples)
+
+	XX = []
+	yy = []
+	PP = []
+	for x, p in zip(X, P):
+		y_r = np.random.choice([0,1], n_copy, p=[1-p, p])
+		x_r = np.full((n_copy,n_features), x)
+
+		u , counts = np.unique(y_r, return_counts=True)
+		# print(f"u {u} counts {counts}")
+		if len(counts) > 1:
+			e_p = float(counts[1] / (counts[1] + counts[0]))
+		else:
+			e_p = float(u[0])
+		# print(f"e_p type {type(e_p)} e_p {e_p}")
+		# print("---------------------------------")
+		# p_r = np.full(n_copy, p)
+		# print("p_r", p_r)
+
+		p_r = np.full(n_copy, e_p)
+		# print("e_p", p_r)
+		# print("r\n", r)
+		# print("y", y_r)
+		# print("---------------------------------")
+		yy.append(y_r)
+		XX.append(x_r)
+		PP.append(p_r)
+
+	XX = np.array(XX).reshape(-1, n_features)
+	yy = np.array(yy).reshape(-1)
+	PP = np.array(PP).reshape(-1)
+
+	return XX, yy, PP
+
+def make_classification_gaussian_with_true_prob(n_samples, 
+						n_features, 
+						class1_mean_min=0, 
+						class1_mean_max=1, 
+						class1_cov_min=1, 
+						class1_cov_max=2, 
+						class2_mean_min=0, 
+						class2_mean_max=1, 
+						class2_cov_min=1, 
+						class2_cov_max=2, 
+						seed=0):
 	n_samples = int(n_samples / 2)
 	# Synthetic data with n_features dimentions and n_classes classes
 
