@@ -504,56 +504,6 @@ def calibration(RF, data, params):
 
     return results_dict
 
-
-def model_calibration(models, data, metrics, plot_bins = 10): # update this outdated function
-
-    # the retuen is a dict with all the metrics results as well as RF probs and every calibration method decision for every test data point
-    # the structure of the keys in the dict is data_calibMethod_metric
-    results_dict = {}
-    for metric in metrics:
-        for model in models:
-            results_dict[data["name"] + "_" + model + "_" + metric] = []
-
-    # random forest probs
-    for model_key in models:
-        if model_key == "RF_l":
-            p_test = models[model_key].predict_proba(data["x_test"], laplace=1)
-        elif model_key == "RF_ct":
-            p_test = models[model_key].predict_proba(data["x_test"], classifier_tree=True)
-        else:
-            p_test = models[model_key].predict_proba(data["x_test"])
-        results_dict[data["name"] + f"_{model_key}_prob"] = p_test
-        results_dict[data["name"] + f"_{model_key}_decision"] = np.argmax(p_test,axis=1)
-
-
-    if "acc" in metrics:
-        for model in models:
-            results_dict[data["name"] + "_" + model +"_acc"].append(accuracy_score(data["y_test"], results_dict[data["name"] + "_" + model +"_decision"]))
-
-    if "auc" in metrics:
-        for model in models:
-            fpr, tpr, thresholds = roc_curve(data["y_test"], results_dict[data["name"] + "_" + model +"_prob"][:,1])
-            results_dict[data["name"] + "_" + model +"_auc"].append(auc(fpr, tpr))
-
-    if "ece" in metrics:
-        for model in models:
-            results_dict[data["name"] + "_" + model +"_ece"].append(confidance_ECE(results_dict[data["name"] + "_" + model +"_prob"], data["y_test"], bins=plot_bins))
-
-    if "brier" in metrics:
-        for model in models:
-            results_dict[data["name"] + "_" + model +"_brier"].append(brier_score_loss(data["y_test"], results_dict[data["name"] + "_" + model +"_prob"][:,1]))
-
-    if "logloss" in metrics:
-        for model in models:
-            results_dict[data["name"] + "_" + model +"_logloss"].append(log_loss(data["y_test"], results_dict[data["name"] + "_" + model +"_prob"][:,1]))
-
-    if "tce" in metrics:
-        for model in models:
-            results_dict[data["name"] + "_" + model +"_tce"].append(mean_squared_error(data["tp_test"], results_dict[data["name"] + "_" + model +"_prob"][:,1]))
-
-    return results_dict
-
-
 def update_runs(ref_dict, new_dict):
 
     # calib results for every run for the same dataset is aggregated in this function 
