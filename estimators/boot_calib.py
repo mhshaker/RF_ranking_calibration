@@ -79,8 +79,8 @@ class Boot_calib():
 
         ens = []
 
-        for params in hyper_params:
-            rf_ens = IR_RF(**params, random_state=seed).fit(x_train, y_train)
+        for i, params in enumerate(hyper_params):
+            rf_ens = IR_RF(**params, random_state=i*100).fit(x_train, y_train)
             p = rf_ens.predict_proba(x_test)
             ens.append(p.copy())
         ens = np.array(ens)
