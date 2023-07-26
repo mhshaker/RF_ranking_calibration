@@ -129,7 +129,6 @@ def calibration(RF, data, params):
         dt = DecisionTreeClassifier(random_state=params["seed"], max_depth=params["depth"]).fit(data["x_train"], data["y_train"])
         dt_p_test = dt.predict_proba(data["x_test"])
         results_dict[f"{data_name}_{method}_prob"] = dt_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(dt_p_test,axis=1)
         results_dict[f"{data_name}_{method}_prob_c"] = dt.predict_proba(data["X"])
 
     method = "LR"
@@ -137,7 +136,6 @@ def calibration(RF, data, params):
         lr = LogisticRegression(random_state=params["seed"]).fit(data["x_train"], data["y_train"])
         lr_p_test = lr.predict_proba(data["x_test"])
         results_dict[f"{data_name}_{method}_prob"] = lr_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(lr_p_test,axis=1)
         results_dict[f"{data_name}_{method}_prob_c"] = lr.predict_proba(data["X"])
 
     method = "SVM"
@@ -145,21 +143,7 @@ def calibration(RF, data, params):
         svm = SVC(probability=True, random_state=params["seed"]).fit(data["x_train"], data["y_train"])
         svm_p_test = svm.predict_proba(data["x_test"])
         results_dict[f"{data_name}_{method}_prob"] = svm_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(svm_p_test,axis=1)
         results_dict[f"{data_name}_{method}_prob_c"] = svm.predict_proba(data["X"])
-
-    method = "SVM_beta"
-    if method in calib_methods:
-        svm = SVC(probability=True, random_state=params["seed"]).fit(data["x_train"], data["y_train"])
-        svm_p_test = svm.predict_proba(data["x_test"])
-        svm_p_calib = svm.predict_proba(data["x_calib"])
-
-        beta_calib_svm = BetaCalibration(parameters="abm").fit(svm_p_calib[:,1], data["y_calib"])
-        beta_p_test_svm = convert_prob_2D(beta_calib_svm.predict(svm_p_test[:,1]))
-
-        results_dict[f"{data_name}_{method}_prob"] = beta_p_test_svm
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(beta_p_test_svm,axis=1)
-        results_dict[f"{data_name}_{method}_fit"] = beta_calib_svm.predict(tvec)
 
     ### full data (train + calib)
     method = "RF_d"
@@ -168,7 +152,6 @@ def calibration(RF, data, params):
         rf_d_p_test = rf_d.predict_proba(data["x_test"])
         rf_d_p_calib = rf_d.predict_proba(data["x_calib"])
         results_dict[f"{data_name}_{method}_prob"] = rf_d_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(rf_d_p_test,axis=1)
         results_dict[f"{data_name}_{method}_prob_c"] = rf_d.predict_proba(data["X"])
 
     method = "RF_opt"
@@ -185,28 +168,24 @@ def calibration(RF, data, params):
 
         rff_p_test = RF_f.predict_proba(data["x_test"])
         results_dict[f"{data_name}_{method}_prob"] = rff_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(rff_p_test,axis=1)
         results_dict[f"{data_name}_{method}_prob_c"] = RF_f.predict_proba(data["X"])
     
     method = "RF_ens_r"
     if method in calib_methods:
         RF_ens_p_test_fd = bc.predict_ens(data["x_test"], data["x_train_calib"], data["y_train_calib"], RF)
         results_dict[f"{data_name}_{method}_prob"] = RF_ens_p_test_fd
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(RF_ens_p_test_fd,axis=1)
         results_dict[f"{data_name}_{method}_prob_c"] = bc.predict_ens(data["X"], data["x_train_calib"], data["y_train_calib"], RF)
 
     method = "RF_ens_k"
     if method in calib_methods:
         RF_ens_k_p_test_fd = bc.predict_ens_params(data["x_test"], data["x_train_calib"], data["y_train_calib"], params["opt_top_K"], params["seed"])
         results_dict[f"{data_name}_{method}_prob"] = RF_ens_k_p_test_fd
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(RF_ens_k_p_test_fd,axis=1)
         results_dict[f"{data_name}_{method}_prob_c"] = bc.predict_ens_params(data["X"], data["x_train_calib"], data["y_train_calib"], params["opt_top_K"], params["seed"])
 
     method = "RF_large"
     if method in calib_methods:
         RF_large_p_test_fd = bc.predict_largeRF(data["x_test"], data["x_train_calib"], data["y_train_calib"], RF)
         results_dict[f"{data_name}_{method}_prob"] = RF_large_p_test_fd
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(RF_large_p_test_fd,axis=1)
         results_dict[f"{data_name}_{method}_prob_c"] = bc.predict_largeRF(data["X"], data["x_train_calib"], data["y_train_calib"], RF)
 
 
@@ -215,7 +194,6 @@ def calibration(RF, data, params):
         plat_calib = _SigmoidCalibration().fit(rf_p_calib[:,1], data["y_calib"])
         plat_p_test = convert_prob_2D(plat_calib.predict(rf_p_test[:,1]))
         results_dict[f"{data_name}_{method}_prob"] = plat_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(plat_p_test,axis=1)
         results_dict[f"{data_name}_{method}_fit"] = plat_calib.predict(tvec)
         results_dict[f"{data_name}_{method}_prob_c"] = convert_prob_2D(plat_calib.predict(results_dict[data["name"] + "_RF_prob_c"][:,1]))
 
@@ -225,7 +203,6 @@ def calibration(RF, data, params):
         iso_calib = IsotonicRegression(out_of_bounds='clip').fit(rf_p_calib[:,1], data["y_calib"])
         iso_p_test = convert_prob_2D(iso_calib.predict(rf_p_test[:,1]))
         results_dict[f"{data_name}_{method}_prob"] = iso_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(iso_p_test,axis=1)
         results_dict[f"{data_name}_{method}_fit"] = iso_calib.predict(tvec)
         results_dict[f"{data_name}_{method}_prob_c"] = convert_prob_2D(iso_calib.predict(results_dict[data["name"] + "_RF_prob_c"][:,1]))
 
@@ -235,7 +212,6 @@ def calibration(RF, data, params):
         crf_calib = CRF_calib(learning_method="sig_brior").fit(rf_p_calib[:,1], data["y_calib"])
         crf_p_test = crf_calib.predict(rf_p_test[:,1])
         results_dict[f"{data_name}_{method}_prob"] = crf_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(crf_p_test,axis=1)
         results_dict[f"{data_name}_{method}_fit"] = crf_calib.predict(tvec)[:,1]
         results_dict[f"{data_name}_{method}_prob_c"] = convert_prob_2D(crf_calib.predict(results_dict[data["name"] + "_RF_prob_c"][:,1]))
 
@@ -245,7 +221,6 @@ def calibration(RF, data, params):
         VA = VA_calib().fit(rf_p_calib[:,1], data["y_calib"])
         va_p_test = convert_prob_2D(VA.predict(rf_p_test[:,1]))
         results_dict[f"{data_name}_{method}_prob"] = va_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(va_p_test,axis=1)
         results_dict[f"{data_name}_{method}_fit"] = VA.predict(tvec)
         results_dict[f"{data_name}_{method}_prob_c"] = convert_prob_2D(VA.predict(results_dict[data["name"] + "_RF_prob_c"][:,1]))
 
@@ -256,7 +231,6 @@ def calibration(RF, data, params):
         beta_calib = BetaCalibration(parameters="abm").fit(rf_p_calib[:,1], data["y_calib"])
         beta_p_test = convert_prob_2D(beta_calib.predict(rf_p_test[:,1]))
         results_dict[f"{data_name}_{method}_prob"] = beta_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(beta_p_test,axis=1)
         results_dict[f"{data_name}_{method}_fit"] = beta_calib.predict(tvec)
         results_dict[f"{data_name}_{method}_prob_c"] = convert_prob_2D(beta_calib.predict(results_dict[data["name"] + "_RF_prob_c"][:,1]))
 
@@ -266,7 +240,6 @@ def calibration(RF, data, params):
         tlr_calib = treeLR_calib().fit(RF, data["x_train"] ,data["y_train"], data["x_calib"], data["y_calib"])
         tlr_p_test = tlr_calib.predict(data["x_test"])
         results_dict[f"{data_name}_{method}_prob"] = tlr_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(tlr_p_test,axis=1)
         # results_dict[data["name"] + "_tlr_fit"] = tlr_calib.predict(convert_prob_2D(tvec))[:,1]
         results_dict[f"{data_name}_{method}_prob_c"] = tlr_calib.predict(data["X"])
 
@@ -276,41 +249,31 @@ def calibration(RF, data, params):
         lr_calib = LinearRegression().fit(RF_ens_p_calib, data["y_calib"])
         y_pred_clipped = np.clip(lr_calib.predict(RF_ens_p_test), 0, 1)
         ebl_p_test = convert_prob_2D(y_pred_clipped)
-
         results_dict[f"{data_name}_{method}_prob"] = ebl_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(ebl_p_test,axis=1)
 
     method = "RF_ens_CRF"
     if method in calib_methods:
         crf_calib = CRF_calib(learning_method="sig_brior").fit(RF_ens_p_calib[:,1], data["y_calib"])
         ebl_p_test = crf_calib.predict(RF_ens_p_test[:,1])
-
         results_dict[f"{data_name}_{method}_prob"] = ebl_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(ebl_p_test,axis=1)
 
     method = "RF_ens_Platt"
     if method in calib_methods:
         plat_calib = _SigmoidCalibration().fit(RF_ens_p_calib[:,1], data["y_calib"])
         ebl_p_test = convert_prob_2D(plat_calib.predict(RF_ens_p_test[:,1]))
-
         results_dict[f"{data_name}_{method}_prob"] = ebl_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(ebl_p_test,axis=1)
 
     method = "RF_ens_ISO"
     if method in calib_methods:
         iso_calib = IsotonicRegression(out_of_bounds='clip').fit(RF_ens_p_calib[:,1], data["y_calib"])
         ebl_p_test = convert_prob_2D(iso_calib.predict(RF_ens_p_test[:,1]))
-
         results_dict[f"{data_name}_{method}_prob"] = ebl_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(ebl_p_test,axis=1)
 
     method = "RF_ens_Beta"
     if method in calib_methods:
         beta_calib = BetaCalibration(parameters="abm").fit(RF_ens_p_calib[:,1], data["y_calib"])
         ebl_p_test = convert_prob_2D(beta_calib.predict(RF_ens_p_test[:,1]))
-
         results_dict[f"{data_name}_{method}_prob"] = ebl_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(ebl_p_test,axis=1)
 
     ### RF_large
     method = "RF_large_line"
@@ -318,50 +281,38 @@ def calibration(RF, data, params):
         lr_calib = LinearRegression().fit(RF_large_p_calib, data["y_calib"])
         y_pred_clipped = np.clip(lr_calib.predict(RF_large_p_test), 0, 1)
         ebl_p_test = convert_prob_2D(y_pred_clipped)
-
         results_dict[f"{data_name}_{method}_prob"] = ebl_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(ebl_p_test,axis=1)
 
     method = "RF_large_CRF"
     if method in calib_methods:
         crf_calib = CRF_calib(learning_method="sig_brior").fit(RF_large_p_calib[:,1], data["y_calib"])
         ebl_p_test = crf_calib.predict(RF_large_p_test[:,1])
-
         results_dict[f"{data_name}_{method}_prob"] = ebl_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(ebl_p_test,axis=1)
 
     method = "RF_large_Platt"
     if method in calib_methods:
         plat_calib = _SigmoidCalibration().fit(RF_large_p_calib[:,1], data["y_calib"])
         ebl_p_test = convert_prob_2D(plat_calib.predict(RF_large_p_test[:,1]))
-
         results_dict[f"{data_name}_{method}_prob"] = ebl_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(ebl_p_test,axis=1)
 
     method = "RF_large_ISO"
     if method in calib_methods:
         iso_calib = IsotonicRegression(out_of_bounds='clip').fit(RF_large_p_calib[:,1], data["y_calib"])
         ebl_p_test = convert_prob_2D(iso_calib.predict(RF_large_p_test[:,1]))
-
         results_dict[f"{data_name}_{method}_prob"] = ebl_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(ebl_p_test,axis=1)
 
     method = "RF_large_Beta"
     if method in calib_methods:
         beta_calib = BetaCalibration(parameters="abm").fit(RF_large_p_calib[:,1], data["y_calib"])
         ebl_p_test = convert_prob_2D(beta_calib.predict(RF_large_p_test[:,1]))
-
         results_dict[f"{data_name}_{method}_prob"] = ebl_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(ebl_p_test,axis=1)
 
     ### RF_ens_k
     method = "RF_ens_k_Platt"
     if method in calib_methods:
         plat_calib = _SigmoidCalibration().fit(RF_ens_k_p_calib[:,1], data["y_calib"])
         ebl_p_test = convert_prob_2D(plat_calib.predict(RF_ens_k_p_test[:,1]))
-
         results_dict[f"{data_name}_{method}_prob"] = ebl_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(ebl_p_test,axis=1)
 
     method = "Line"
     if method in calib_methods:
@@ -369,7 +320,6 @@ def calibration(RF, data, params):
         y_pred_clipped = np.clip(lr_calib.predict(rf_p_test), 0, 1)
         lr_p_test = convert_prob_2D(y_pred_clipped)
         results_dict[f"{data_name}_{method}_prob"] = lr_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(lr_p_test,axis=1)
         results_dict[f"{data_name}_{method}_fit"] = np.clip(lr_calib.predict(convert_prob_2D(tvec)), 0, 1)
 
 
@@ -381,7 +331,6 @@ def calibration(RF, data, params):
         plat_calib = _SigmoidCalibration().fit(rf_d_p_calib[:,1], data["y_calib"])
         plat_p_test = convert_prob_2D(plat_calib.predict(rf_d_p_test[:,1]))
         results_dict[f"{data_name}_{method}_prob"] = plat_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(plat_p_test,axis=1)
         results_dict[f"{data_name}_{method}_fit"] = plat_calib.predict(tvec)
 
     # RF ranking + ISO
@@ -393,7 +342,6 @@ def calibration(RF, data, params):
         iso_rank = IsotonicRegression(out_of_bounds='clip').fit(x_calib_rank, data["y_calib"]) 
         rank_p_test = convert_prob_2D(iso_rank.predict(x_test_rank))
         results_dict[f"{data_name}_{method}_prob"] = rank_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(rank_p_test,axis=1)
         # tvec_rank = RF.rank_refrence(data["x_test"], class_to_rank=1)
         # results_dict[data["name"] + "_Rank_fit"] = iso_rank.predict(tvec_rank)
 
@@ -403,8 +351,6 @@ def calibration(RF, data, params):
         iso_rank = IsotonicRegression(out_of_bounds='clip').fit(data["tp_calib"], data["y_calib"]) 
         rank_p_test = convert_prob_2D(iso_rank.predict(data["tp_test"]))
         results_dict[f"{data_name}_{method}_prob"] = rank_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(rank_p_test,axis=1)
-
 
     # Venn calibrator
     method = "Venn"
@@ -412,7 +358,6 @@ def calibration(RF, data, params):
         ven_calib = Venn_calib().fit(rf_p_calib, data["y_calib"])
         ven_p_test = ven_calib.predict(rf_p_test)
         results_dict[f"{data_name}_{method}_prob"] = ven_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(ven_p_test,axis=1)
         results_dict[f"{data_name}_{method}_fit"] = ven_calib.predict(convert_prob_2D(tvec))[:,1]
 
     # Elkan calibration
@@ -421,14 +366,12 @@ def calibration(RF, data, params):
         elkan_calib = Elkan_calib().fit(data["y_train"], data["y_calib"])
         elkan_p_test = elkan_calib.predict(rf_p_test[:,1])
         results_dict[f"{data_name}_{method}_prob"] = elkan_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(elkan_p_test,axis=1)
         results_dict[f"{data_name}_{method}_fit"] = elkan_calib.predict(tvec)[:,1]
 
     method = "true"
     if method in calib_methods:
         true_p_test = convert_prob_2D(bc.true_prob_ens(data["x_test"], data["y_test"], data["x_train"], data["y_train"], RF))
         results_dict[f"{data_name}_{method}_prob"] = true_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(true_p_test,axis=1)
 
     method = "bin"
     if method in calib_methods:
@@ -436,7 +379,6 @@ def calibration(RF, data, params):
         bc_bin = Bin_calib(params["ece_bins"]).fit(rf_p_train[:,1], data["y_train"], rf_p_calib[:,1], data["y_calib"])
         bin_p_test = convert_prob_2D(bc_bin.predict(rf_p_test[:,1]))
         results_dict[f"{data_name}_{method}_prob"] = bin_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(bin_p_test,axis=1)
     
     method = "RF_boot"
     if method in calib_methods:
@@ -444,14 +386,12 @@ def calibration(RF, data, params):
         bc_boot = Boot_calib(boot_count=params["boot_count"], bootstrap_size= params["boot_size"])
         bc_p_test = bc_boot.predict_boot(rf_tree_test)
         results_dict[f"{data_name}_{method}_prob"] = bc_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(bc_p_test,axis=1)
 
     method = "RF_ens_boot"
     if method in calib_methods:
         bc_ensboot = Boot_calib(boot_count=params["boot_count"], bootstrap_size= params["boot_size"])
         bc_p_test = bc_ensboot.predict_ens_boot(data["x_test"], data["x_train"], data["y_train"], RF)
         results_dict[f"{data_name}_{method}_prob"] = bc_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(bc_p_test,axis=1)
 
     method = "RF_ensbin"
     if method in calib_methods:
@@ -459,30 +399,26 @@ def calibration(RF, data, params):
         bc_ensbin = Boot_calib(boot_count=params["boot_count"]).fit(data["x_train"], data["y_train"], RF)
         bc_p_test = convert_prob_2D(bc_ensbin.predict_ens2(rf_p_test[:,1]))
         results_dict[f"{data_name}_{method}_prob"] = bc_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(bc_p_test,axis=1)
 
     method = "RF_CT"
     if method in calib_methods:
         rf_ct_test = RF.predict_proba(data["x_test"], classifier_tree=True)
         results_dict[f"{data_name}_{method}_prob"] = rf_ct_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(rf_ct_test,axis=1)
 
     method = "RF_Laplace"
     if method in calib_methods:
         rf_lap_test = RF.predict_proba(data["x_test"], laplace=1)
         results_dict[f"{data_name}_{method}_prob"] = rf_lap_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(rf_lap_test,axis=1)
 
     method = "RF_ens_p"
     if method in calib_methods:
         bc_p_test = bc.predict_ens(data["x_test"], data["x_train"], data["y_train"], RF, param_change=True)
         results_dict[f"{data_name}_{method}_prob"] = bc_p_test
-        results_dict[f"{data_name}_{method}_decision"] = np.argmax(bc_p_test,axis=1)
 
 
     if "acc" in metrics:
         for method in calib_methods:
-            results_dict[f"{data_name}_{method}_acc"] = accuracy_score(data["y_test"], results_dict[f"{data_name}_{method}_decision"])
+            results_dict[f"{data_name}_{method}_acc"] = accuracy_score(data["y_test"], np.argmax(results_dict[f"{data_name}_{method}_prob"],axis=1))
 
     if "auc" in metrics:
         for method in calib_methods:
