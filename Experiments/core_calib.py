@@ -443,45 +443,7 @@ def calibration(RF, data, params):
         for method in calib_methods:
             results_dict[f"{data_name}_{method}_tce"] = mean_squared_error(data["tp_test"], results_dict[f"{data_name}_{method}_prob"][:,1])
 
-    # calibration loss, group loss and aliatoric losss for Brier score
-    # if "CL" in metrics:
-    #     for method in calib_methods:
-    #         # calculate C_test
-    #         u = np.unique(results_dict[f"{data_name}_{method}_prob"][:,1])
-    #         c_test_calib_method = data["y_test"].copy()
-    #         for v in u:
-    #             e_index = np.argwhere(results_dict[f"{data_name}_{method}_prob"][:,1] == v)
-    #             e_labels_mean = data["y_test"][e_index].mean()
-    #             c_test_calib_method[e_index] = e_labels_mean
-
-    #         results_dict[f"{data_name}_{method}_CL"] = mean_squared_error(c_test_calib_method, results_dict[f"{data_name}_{method}_prob"][:,1])
-
-    # if "GL" in metrics:
-    #     for method in calib_methods:
-    #         # calculate C_test
-    #         u = np.unique(results_dict[f"{data_name}_{method}_prob"][:,1])
-    #         c_test_calib_method = data["y_test"].copy()
-    #         for v in u:
-    #             e_index = np.argwhere(results_dict[f"{data_name}_{method}_prob"][:,1] == v)
-    #             e_labels_mean = data["y_test"][e_index].mean()
-    #             c_test_calib_method[e_index] = e_labels_mean
-
-    #         results_dict[f"{data_name}_{method}_GL"] = mean_squared_error(data["tp_test"], c_test_calib_method)
-
-    # if "IL" in metrics:
-    #     for method in calib_methods:
-    #         results_dict[f"{data_name}_{method}_IL"] = mean_squared_error(data["tp_test"], data["y_test"])
-
     if "BS" in metrics:
-
-        # X, y, tp = dp.make_classification_gaussian_with_true_prob(10000, 
-        #                                                 params["n_features"], 
-        #                                                 class1_mean_min = params["class1_mean_min"], 
-        #                                                 class1_mean_max = params["class1_mean_max"],
-        #                                                 class2_mean_min = params["class2_mean_min"], 
-        #                                                 class2_mean_max = params["class2_mean_max"], 
-        #                                                 seed=params["seed"])
-        # rf_p_c = RF.predict_proba(X)
 
         for method in calib_methods:
             # calculate C_test
@@ -524,8 +486,6 @@ def update_runs(ref_dict, new_dict):
         res_dict[k] = ref_dict[k] + [new_dict[k]]
 
     return res_dict    
-
-
 
 def mean_and_ranking_table(results_dict, metrics, calib_methods, data_list, save_results=False, mean_and_rank=True, std=False):
 
@@ -591,7 +551,6 @@ def exp_mean_rank_through_time(exp_df_all, exp_df, exp_value, value="rank", exp_
         exp_df_all[k] = pd.concat([exp_df_all[k], (pd.DataFrame([calib_values]))])
     return exp_df_all
 
-
 def find_nearest_index(arr, X):
     sorted_arr = np.sort(arr)
     absolute_diff = np.abs(sorted_arr - X)
@@ -609,13 +568,9 @@ def predict_bin(prob_true, prob_pred, Y):
 
 def plot_probs(exp_data_name, probs_runs, data_runs, params, ref_plot_name="RF", hist_plot=False, calib_plot=False, corrct_ece=True):
 
-    # params["data_name"] = "reset"
-    
     calib_methods = params["calib_methods"]
 
     # concatinate all runs
-    
-    
     for method in calib_methods:
 
         all_run_probs = np.zeros(1)
