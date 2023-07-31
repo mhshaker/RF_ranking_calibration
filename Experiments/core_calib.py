@@ -102,23 +102,9 @@ def calibration(RF, data, params):
     rf_p_calib = RF.predict_proba(data["x_calib"])
     rf_p_test = RF.predict_proba(data["x_test"])
     results_dict[data["name"] + "_RF_prob"] = rf_p_test
-    results_dict[data["name"] + "_RF_prob_train"] = RF.predict_proba(data["x_train"])
     results_dict[data["name"] + "_RF_cstar"] = RF.predict_proba(data["X"])
-    results_dict[data["name"] + "_RF_prob_calib"] = rf_p_calib
-    results_dict[data["name"] + "_RF_decision"] = np.argmax(rf_p_test,axis=1)
+    # results_dict[data["name"] + "_RF_prob_calib"] = rf_p_calib
 
-    bc = Boot_calib(boot_count=params["boot_count"])
-    RF_ens_p_test = bc.predict_ens(data["x_test"], data["x_train"], data["y_train"], RF)
-    RF_ens_p_calib = bc.predict_ens(data["x_calib"], data["x_train"], data["y_train"], RF)
-    RF_ens_p_c = bc.predict_ens(data["X"], data["x_train"], data["y_train"], RF)
-
-    RF_ens_k_p_test = bc.predict_ens_params(data["x_test"], data["x_train"], data["y_train"], params["opt_top_K"], params["seed"])
-    RF_ens_k_p_calib = bc.predict_ens_params(data["x_calib"], data["x_train"], data["y_train"], params["opt_top_K"], params["seed"])
-    RF_ens_k_p_c = bc.predict_ens_params(data["X"], data["x_train"], data["y_train"], params["opt_top_K"], params["seed"])
-
-    RF_large_p_test = bc.predict_largeRF(data["x_test"], data["x_train"], data["y_train"], RF)
-    RF_large_p_calib = bc.predict_largeRF(data["x_calib"], data["x_train"], data["y_train"], RF)
-    RF_large_p_c = bc.predict_largeRF(data["X"], data["x_train"], data["y_train"], RF)
 
     # all input probs to get the fit calib model
 
@@ -272,6 +258,22 @@ def calibration(RF, data, params):
     if method in calib_methods:
         rf_lap_test = RF.predict_proba(data["x_test"], laplace=1)
         results_dict[f"{data_name}_{method}_prob"] = rf_lap_test
+
+
+    # results_dict[data["name"] + "_RF_prob_train"] = RF.predict_proba(data["x_train"])
+
+    # bc = Boot_calib(boot_count=params["boot_count"])
+    # RF_ens_p_test = bc.predict_ens(data["x_test"], data["x_train"], data["y_train"], RF)
+    # RF_ens_p_calib = bc.predict_ens(data["x_calib"], data["x_train"], data["y_train"], RF)
+    # RF_ens_p_c = bc.predict_ens(data["X"], data["x_train"], data["y_train"], RF)
+
+    # RF_ens_k_p_test = bc.predict_ens_params(data["x_test"], data["x_train"], data["y_train"], params["opt_top_K"], params["seed"])
+    # RF_ens_k_p_calib = bc.predict_ens_params(data["x_calib"], data["x_train"], data["y_train"], params["opt_top_K"], params["seed"])
+    # RF_ens_k_p_c = bc.predict_ens_params(data["X"], data["x_train"], data["y_train"], params["opt_top_K"], params["seed"])
+
+    # RF_large_p_test = bc.predict_largeRF(data["x_test"], data["x_train"], data["y_train"], RF)
+    # RF_large_p_calib = bc.predict_largeRF(data["x_calib"], data["x_train"], data["y_train"], RF)
+    # RF_large_p_c = bc.predict_largeRF(data["X"], data["x_train"], data["y_train"], RF)
 
     # ### RF_ens
     # method = "RF_ens_line"
