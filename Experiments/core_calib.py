@@ -90,13 +90,45 @@ def CV_split_train_calib_test(name, X, y, folds=10, seed=0, tp=np.full(10,-1)):
     return data_folds
 
 
-def calibration(RF, data, params):
+def calibration(data, params, model_name="RF"):
     data_name = data["name"]
     calib_methods = params["calib_methods"] 
     metrics = params["metrics"]
     # the retuen is a dict with all the metrics results as well as RF probs and every calibration method decision for every test data point
     # the structure of the keys in the dict is data_calibMethod_metric
     results_dict = {}
+
+    # train model - hyper opt
+    rf = IR_RF(random_state=params["seed"])
+    RS = RandomizedSearchCV(rf, params["search_space"], scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=params["seed"])
+    RS.fit(data["x_train"], data["y_train"])
+    rf_best = RS.best_estimator_
+
+    opt_params = np.array(RS.cv_results_['params'])
+    opt_rankings = np.array(RS.cv_results_['rank_test_neg_brier_score'])
+
+    sorted_indices = np.argsort(opt_rankings, kind="stable")
+    opt_params = opt_params[sorted_indices]
+    params["opt_top_K"] = opt_params[:params["opt_top_K"]] # save the top K best performing RF params in opt_top_K
+
+    if params["hyper_opt"] == "Default":
+        rf_best = IR_RF(random_state=params["seed"])
+        rf_best.fit(data["x_train"], data["y_train"])
+    elif params["hyper_opt"] == "Manual":
+        rf_best = IR_RF(n_estimators=params["n_estimators"], max_depth=params["depth"], random_state=params["seed"])
+        rf_best.fit(data["x_train"], data["y_train"])
+
+    # check_dummy=False
+    # if check_dummy:
+    #     dummy_clf = DummyClassifier(strategy="most_frequent").fit(data["x_train"], data["y_train"])
+    #     d_s = dummy_clf.score(data["x_test"], data["y_test"])
+    #     rf_best_s = rf_best.score(data["x_test"], data["y_test"])
+    #     l_dif = (rf_best_s - d_s ) * 100
+    #     # print(f"data {data['name']} learn diff {rf_best_s - d_s}")
+    #     if l_dif <= 1:
+    #         print(f">>>>>>> data {data['name']} NOT LEARNING - learnign diff is {l_dif}")
+
+    RF = rf_best
 
     # random forest probs
     rf_p_calib = RF.predict_proba(data["x_calib"])

@@ -15,43 +15,6 @@ from sklearn.datasets import make_classification
 
 
 np.random.seed(0)
-
-
-def train_calib(data, params, seed, check_dummy=False):
-    # train model - hyper opt
-    rf = IR_RF(random_state=seed)
-    RS = RandomizedSearchCV(rf, params["search_space"], scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
-    RS.fit(data["x_train"], data["y_train"])
-    rf_best = RS.best_estimator_
-
-    opt_params = np.array(RS.cv_results_['params'])
-    opt_rankings = np.array(RS.cv_results_['rank_test_neg_brier_score'])
-
-    sorted_indices = np.argsort(opt_rankings, kind="stable")
-    opt_params = opt_params[sorted_indices]
-    params["opt_top_K"] = opt_params[:params["opt_top_K"]] # save the top K best performing RF params in opt_top_K
-    # print("opt_top_K", params["opt_top_K"])
-
-    if params["hyper_opt"] == "Default":
-        rf_best = IR_RF(random_state=seed)
-        rf_best.fit(data["x_train"], data["y_train"])
-    elif params["hyper_opt"] == "Manual":
-        rf_best = IR_RF(n_estimators=params["n_estimators"], max_depth=params["depth"], random_state=seed)
-        rf_best.fit(data["x_train"], data["y_train"])
-
-    if check_dummy:
-        dummy_clf = DummyClassifier(strategy="most_frequent").fit(data["x_train"], data["y_train"])
-        d_s = dummy_clf.score(data["x_test"], data["y_test"])
-        rf_best_s = rf_best.score(data["x_test"], data["y_test"])
-        l_dif = (rf_best_s - d_s ) * 100
-        # print(f"data {data['name']} learn diff {rf_best_s - d_s}")
-        if l_dif <= 1:
-            print(f">>>>>>> data {data['name']} NOT LEARNING - learnign diff is {l_dif}")
-
-
-    # calibration
-    return cal.calibration(rf_best, data, params) # res is a dict with all the metrics results as well as RF probs and every calibration method decision for every test data point
-
     
 def run_exp(exp_key, exp_values, params):
 
@@ -116,7 +79,7 @@ def run_exp(exp_key, exp_values, params):
             for data in data_folds:    
                 data_runs.append(data)
             # for data in data_folds: # running the same dataset multiple times
-            res_list = Parallel(n_jobs=-1)(delayed(train_calib)(data, params, seed) for data, params, seed in zip(data_folds, np.repeat(params, params["cv_folds"]), np.repeat(seed, params["cv_folds"])))
+            res_list = Parallel(n_jobs=-1)(delayed(cal.calibration)(data, params) for data, params in zip(data_folds, np.repeat(params, params["cv_folds"])))
             
             for res in res_list:
                 res_runs = cal.update_runs(res_runs, res) # calib results for every run for the same dataset is aggregated in res_runs (ex. acc of every run as an array)
