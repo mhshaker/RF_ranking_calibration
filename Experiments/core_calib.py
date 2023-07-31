@@ -103,7 +103,7 @@ def calibration(RF, data, params):
     rf_p_test = RF.predict_proba(data["x_test"])
     results_dict[data["name"] + "_RF_prob"] = rf_p_test
     results_dict[data["name"] + "_RF_prob_train"] = RF.predict_proba(data["x_train"])
-    results_dict[data["name"] + "_RF_prob_c"] = RF.predict_proba(data["X"])
+    results_dict[data["name"] + "_RF_cstar"] = RF.predict_proba(data["X"])
     results_dict[data["name"] + "_RF_prob_calib"] = rf_p_calib
     results_dict[data["name"] + "_RF_decision"] = np.argmax(rf_p_test,axis=1)
 
@@ -122,28 +122,28 @@ def calibration(RF, data, params):
 
     # all input probs to get the fit calib model
 
-    ### other models
+    ### models
 
     method = "DT"
     if method in calib_methods:
         dt = DecisionTreeClassifier(random_state=params["seed"], max_depth=params["depth"]).fit(data["x_train"], data["y_train"])
         dt_p_test = dt.predict_proba(data["x_test"])
         results_dict[f"{data_name}_{method}_prob"] = dt_p_test
-        results_dict[f"{data_name}_{method}_prob_c"] = dt.predict_proba(data["X"])
+        results_dict[f"{data_name}_{method}_cstar"] = dt.predict_proba(data["X"])
 
     method = "LR"
     if method in calib_methods:
         lr = LogisticRegression(random_state=params["seed"]).fit(data["x_train"], data["y_train"])
         lr_p_test = lr.predict_proba(data["x_test"])
         results_dict[f"{data_name}_{method}_prob"] = lr_p_test
-        results_dict[f"{data_name}_{method}_prob_c"] = lr.predict_proba(data["X"])
+        results_dict[f"{data_name}_{method}_cstar"] = lr.predict_proba(data["X"])
 
     method = "SVM"
     if method in calib_methods:
         svm = SVC(probability=True, random_state=params["seed"]).fit(data["x_train"], data["y_train"])
         svm_p_test = svm.predict_proba(data["x_test"])
         results_dict[f"{data_name}_{method}_prob"] = svm_p_test
-        results_dict[f"{data_name}_{method}_prob_c"] = svm.predict_proba(data["X"])
+        results_dict[f"{data_name}_{method}_cstar"] = svm.predict_proba(data["X"])
 
     ### full data (train + calib)
     method = "RF_d"
@@ -152,7 +152,7 @@ def calibration(RF, data, params):
         rf_d_p_test = rf_d.predict_proba(data["x_test"])
         rf_d_p_calib = rf_d.predict_proba(data["x_calib"])
         results_dict[f"{data_name}_{method}_prob"] = rf_d_p_test
-        results_dict[f"{data_name}_{method}_prob_c"] = rf_d.predict_proba(data["X"])
+        results_dict[f"{data_name}_{method}_cstar"] = rf_d.predict_proba(data["X"])
 
     method = "RF_opt"
     if method in calib_methods:
@@ -168,26 +168,27 @@ def calibration(RF, data, params):
 
         rff_p_test = RF_f.predict_proba(data["x_test"])
         results_dict[f"{data_name}_{method}_prob"] = rff_p_test
-        results_dict[f"{data_name}_{method}_prob_c"] = RF_f.predict_proba(data["X"])
+        results_dict[f"{data_name}_{method}_cstar"] = RF_f.predict_proba(data["X"])
     
     method = "RF_ens_r"
     if method in calib_methods:
         RF_ens_p_test_fd = bc.predict_ens(data["x_test"], data["x_train_calib"], data["y_train_calib"], RF)
         results_dict[f"{data_name}_{method}_prob"] = RF_ens_p_test_fd
-        results_dict[f"{data_name}_{method}_prob_c"] = bc.predict_ens(data["X"], data["x_train_calib"], data["y_train_calib"], RF)
+        results_dict[f"{data_name}_{method}_cstar"] = bc.predict_ens(data["X"], data["x_train_calib"], data["y_train_calib"], RF)
 
     method = "RF_ens_k"
     if method in calib_methods:
         RF_ens_k_p_test_fd = bc.predict_ens_params(data["x_test"], data["x_train_calib"], data["y_train_calib"], params["opt_top_K"], params["seed"])
         results_dict[f"{data_name}_{method}_prob"] = RF_ens_k_p_test_fd
-        results_dict[f"{data_name}_{method}_prob_c"] = bc.predict_ens_params(data["X"], data["x_train_calib"], data["y_train_calib"], params["opt_top_K"], params["seed"])
+        results_dict[f"{data_name}_{method}_cstar"] = bc.predict_ens_params(data["X"], data["x_train_calib"], data["y_train_calib"], params["opt_top_K"], params["seed"])
 
     method = "RF_large"
     if method in calib_methods:
         RF_large_p_test_fd = bc.predict_largeRF(data["x_test"], data["x_train_calib"], data["y_train_calib"], RF)
         results_dict[f"{data_name}_{method}_prob"] = RF_large_p_test_fd
-        results_dict[f"{data_name}_{method}_prob_c"] = bc.predict_largeRF(data["X"], data["x_train_calib"], data["y_train_calib"], RF)
+        results_dict[f"{data_name}_{method}_cstar"] = bc.predict_largeRF(data["X"], data["x_train_calib"], data["y_train_calib"], RF)
 
+    
 
     method = "Platt"
     if method in calib_methods:
@@ -195,7 +196,7 @@ def calibration(RF, data, params):
         plat_p_test = convert_prob_2D(plat_calib.predict(rf_p_test[:,1]))
         results_dict[f"{data_name}_{method}_prob"] = plat_p_test
         results_dict[f"{data_name}_{method}_fit"] = plat_calib.predict(tvec)
-        results_dict[f"{data_name}_{method}_prob_c"] = convert_prob_2D(plat_calib.predict(results_dict[data["name"] + "_RF_prob_c"][:,1]))
+        results_dict[f"{data_name}_{method}_cstar"] = convert_prob_2D(plat_calib.predict(results_dict[data["name"] + "_RF_cstar"][:,1]))
 
     # ISO calibration on RF
     method = "ISO"
@@ -204,7 +205,7 @@ def calibration(RF, data, params):
         iso_p_test = convert_prob_2D(iso_calib.predict(rf_p_test[:,1]))
         results_dict[f"{data_name}_{method}_prob"] = iso_p_test
         results_dict[f"{data_name}_{method}_fit"] = iso_calib.predict(tvec)
-        results_dict[f"{data_name}_{method}_prob_c"] = convert_prob_2D(iso_calib.predict(results_dict[data["name"] + "_RF_prob_c"][:,1]))
+        results_dict[f"{data_name}_{method}_cstar"] = convert_prob_2D(iso_calib.predict(results_dict[data["name"] + "_RF_cstar"][:,1]))
 
     # CRF calibrator
     method = "CRF"
@@ -213,7 +214,7 @@ def calibration(RF, data, params):
         crf_p_test = crf_calib.predict(rf_p_test[:,1])
         results_dict[f"{data_name}_{method}_prob"] = crf_p_test
         results_dict[f"{data_name}_{method}_fit"] = crf_calib.predict(tvec)[:,1]
-        results_dict[f"{data_name}_{method}_prob_c"] = convert_prob_2D(crf_calib.predict(results_dict[data["name"] + "_RF_prob_c"][:,1]))
+        results_dict[f"{data_name}_{method}_cstar"] = convert_prob_2D(crf_calib.predict(results_dict[data["name"] + "_RF_cstar"][:,1]))
 
     # Venn abers
     method = "VA"
@@ -222,7 +223,7 @@ def calibration(RF, data, params):
         va_p_test = convert_prob_2D(VA.predict(rf_p_test[:,1]))
         results_dict[f"{data_name}_{method}_prob"] = va_p_test
         results_dict[f"{data_name}_{method}_fit"] = VA.predict(tvec)
-        results_dict[f"{data_name}_{method}_prob_c"] = convert_prob_2D(VA.predict(results_dict[data["name"] + "_RF_prob_c"][:,1]))
+        results_dict[f"{data_name}_{method}_cstar"] = convert_prob_2D(VA.predict(results_dict[data["name"] + "_RF_cstar"][:,1]))
 
 
     # Beta calibration
@@ -232,7 +233,7 @@ def calibration(RF, data, params):
         beta_p_test = convert_prob_2D(beta_calib.predict(rf_p_test[:,1]))
         results_dict[f"{data_name}_{method}_prob"] = beta_p_test
         results_dict[f"{data_name}_{method}_fit"] = beta_calib.predict(tvec)
-        results_dict[f"{data_name}_{method}_prob_c"] = convert_prob_2D(beta_calib.predict(results_dict[data["name"] + "_RF_prob_c"][:,1]))
+        results_dict[f"{data_name}_{method}_cstar"] = convert_prob_2D(beta_calib.predict(results_dict[data["name"] + "_RF_cstar"][:,1]))
 
     # tree LR calib
     method = "tlr"
@@ -241,7 +242,7 @@ def calibration(RF, data, params):
         tlr_p_test = tlr_calib.predict(data["x_test"])
         results_dict[f"{data_name}_{method}_prob"] = tlr_p_test
         # results_dict[data["name"] + "_tlr_fit"] = tlr_calib.predict(convert_prob_2D(tvec))[:,1]
-        results_dict[f"{data_name}_{method}_prob_c"] = tlr_calib.predict(data["X"])
+        results_dict[f"{data_name}_{method}_cstar"] = tlr_calib.predict(data["X"])
 
     ### RF_ens
     method = "RF_ens_line"
@@ -447,17 +448,17 @@ def calibration(RF, data, params):
 
         for method in calib_methods:
             # calculate C_test
-            u = np.unique(results_dict[f"{data_name}_{method}_prob_c"][:,1])
+            u = np.unique(results_dict[f"{data_name}_{method}_cstar"][:,1])
             c_test_calib_method = data["tp"].copy()
             for v in u:
-                e_index = np.argwhere(results_dict[f"{data_name}_{method}_prob_c"][:,1] == v)
+                e_index = np.argwhere(results_dict[f"{data_name}_{method}_cstar"][:,1] == v)
                 e_labels_mean = data["tp"][e_index].mean()
                 c_test_calib_method[e_index] = e_labels_mean
             
-            CL = mean_squared_error(c_test_calib_method, results_dict[f"{data_name}_{method}_prob_c"][:,1])
+            CL = mean_squared_error(c_test_calib_method, results_dict[f"{data_name}_{method}_cstar"][:,1])
             GL = mean_squared_error(data["tp"], c_test_calib_method)
             IL = mean_squared_error(data["tp"], data["y"])
-            BS = mean_squared_error(data["y"], results_dict[f"{data_name}_{method}_prob_c"][:,1])
+            BS = mean_squared_error(data["y"], results_dict[f"{data_name}_{method}_cstar"][:,1])
             results_dict[f"{data_name}_{method}_CL"] = CL
             results_dict[f"{data_name}_{method}_GL"] = GL
             results_dict[f"{data_name}_{method}_IL"] = IL
