@@ -143,7 +143,8 @@ def load_arff_2(data_name):
 
 from scipy.stats import multivariate_normal
 
-def x_y_q(X, n_copy=50): # create true probability with repeating X instances n_copy times with different labels assigned by a random choice with prob p drawn from uniform dirstribution
+def x_y_q(X, n_copy=50, seed=0): # create true probability with repeating X instances n_copy times with different labels assigned by a random choice with prob p drawn from uniform dirstribution
+	np.random.seed(seed)
 	n_features = X.shape[1]
 	n_samples = len(X)
 
