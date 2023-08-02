@@ -41,10 +41,10 @@ def run_exp(exp_key, exp_values, params):
                 #                                                         seed=seed)
                 
                 X_temp, _ = make_classification(n_samples=params["data_size"], 
-                            n_features=params["n_features"], 
-                            n_informative=2, 
-                            n_redundant=0, 
-                            n_repeated=0, 
+                            n_features= params["n_features"], 
+                            n_informative= params["n_informative"], 
+                            n_redundant= params["n_redundant"], 
+                            n_repeated= params["n_repeated"], 
                             n_classes=2, 
                             n_clusters_per_class=2, 
                             weights=None, 
@@ -55,7 +55,7 @@ def run_exp(exp_key, exp_values, params):
                             scale=1.0, 
                             shuffle=True, 
                             random_state=seed)
-                X, y, tp = dp.x_y_q(X_temp, n_copy=params["n_copy"])
+                X, y, tp = dp.x_y_q(X_temp, n_copy = params["n_copy"], seed = params["seed"])
 
                 if params["plot_data"]:
                     colors = ['black', 'red']
@@ -96,6 +96,8 @@ def run_exp(exp_key, exp_values, params):
         exp_res.update(res_runs) # merge results of all datasets together
         # print("exp_res ", exp_res)
         # print("---------------------------------")
+        print(f"exp_param {exp_param} done")
+
 
     return exp_res, data_list
         
