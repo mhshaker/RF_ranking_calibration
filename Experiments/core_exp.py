@@ -31,31 +31,32 @@ def run_exp(exp_key, exp_values, params):
         for seed in range(params["runs"]):
             params["seed"] = seed
 
-            if params["data_name"] == "synthetic":
-                # X, y, tp = dp.make_classification_gaussian_with_true_prob(params["data_size"], 
-                #                                                         params["n_features"], 
-                #                                                         class1_mean_min = params["class1_mean_min"], 
-                #                                                         class1_mean_max = params["class1_mean_max"],
-                #                                                         class2_mean_min = params["class2_mean_min"], 
-                #                                                         class2_mean_max = params["class2_mean_max"], 
-                #                                                         seed=seed)
-                
-                X_temp, _ = make_classification(n_samples=params["data_size"], 
-                            n_features= params["n_features"], 
-                            n_informative= params["n_informative"], 
-                            n_redundant= params["n_redundant"], 
-                            n_repeated= params["n_repeated"], 
-                            n_classes=2, 
-                            n_clusters_per_class=2, 
-                            weights=None, 
-                            flip_y=0.05, 
-                            class_sep=1.0, 
-                            hypercube=True, 
-                            shift=0.0, 
-                            scale=1.0, 
-                            shuffle=True, 
-                            random_state=seed)
-                X, y, tp = dp.x_y_q(X_temp, n_copy = params["n_copy"], seed = params["seed"])
+            if "synthetic" in params["data_name"]:
+                if params["data_name"] == "synthetic":
+                    X, y, tp = dp.make_classification_gaussian_with_true_prob(params["data_size"], 
+                                                                            params["n_features"], 
+                                                                            class1_mean_min = params["class1_mean_min"], 
+                                                                            class1_mean_max = params["class1_mean_max"],
+                                                                            class2_mean_min = params["class2_mean_min"], 
+                                                                            class2_mean_max = params["class2_mean_max"], 
+                                                                            seed=seed)
+                elif params["data_name"] == "synthetic2":
+                    X_temp, _ = make_classification(n_samples=params["data_size"], 
+                                n_features= params["n_features"], 
+                                n_informative= params["n_informative"], 
+                                n_redundant= params["n_redundant"], 
+                                n_repeated= params["n_repeated"], 
+                                n_classes=2, 
+                                n_clusters_per_class=1, 
+                                weights=None, 
+                                flip_y=0.05, 
+                                class_sep=1.0, 
+                                hypercube=True, 
+                                shift=0.0, 
+                                scale=1.0, 
+                                shuffle=True, 
+                                random_state=seed)
+                    X, y, tp = dp.x_y_q(X_temp, n_copy = params["n_copy"], seed = params["seed"])
 
                 if params["plot_data"]:
                     colors = ['black', 'red']
