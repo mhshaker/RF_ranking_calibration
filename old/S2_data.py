@@ -10,7 +10,7 @@ from sklearn.isotonic import IsotonicRegression
 from sklearn.calibration import calibration_curve
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import normalize
-from CalibrationM import confidance_ECE, convert_prob_2D
+from old.CalibrationM import confidance_ECE, convert_prob_2D
 import Data.data_provider as dp
 
 runs = 10

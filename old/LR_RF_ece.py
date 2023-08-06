@@ -21,7 +21,7 @@ from estimators.LR_RF_estimator import LR_RF
 from estimators.LR_RF_estimator import convert_to_ranking
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
-import CalibrationM as calibm
+import old.CalibrationM as calibm
 
 from sklearn.datasets import make_classification
 

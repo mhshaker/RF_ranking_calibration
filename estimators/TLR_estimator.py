@@ -1,6 +1,6 @@
 import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
-from CalibrationM import convert_prob_2D
+from old.CalibrationM import convert_prob_2D
 from sklearn.linear_model import LogisticRegression
 from estimators.LR_estimator import LR_u as lr
 

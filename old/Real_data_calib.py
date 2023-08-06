@@ -20,7 +20,7 @@ from betacal import BetaCalibration
 from estimators.TLR_estimator import treeLR_calib
 
 from sklearn.calibration import calibration_curve
-from CalibrationM import confidance_ECE, convert_prob_2D, classwise_ECE
+from old.CalibrationM import confidance_ECE, convert_prob_2D, classwise_ECE
 import Data.data_provider as dp
 import matplotlib.pyplot as plt
 from sklearn.metrics import brier_score_loss

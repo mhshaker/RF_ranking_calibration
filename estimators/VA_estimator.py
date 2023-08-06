@@ -1,6 +1,6 @@
 import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
-from CalibrationM import convert_prob_2D
+from old.CalibrationM import convert_prob_2D
 from sklearn.metrics import brier_score_loss
 from sklearn.isotonic import IsotonicRegression
 

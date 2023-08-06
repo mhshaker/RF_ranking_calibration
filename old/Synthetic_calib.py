@@ -21,7 +21,7 @@ from sklearn.isotonic import IsotonicRegression
 from sklearn.calibration import _SigmoidCalibration
 from betacal import BetaCalibration
 
-from CalibrationM import confidance_ECE, convert_prob_2D
+from old.CalibrationM import confidance_ECE, convert_prob_2D
 from sklearn.metrics import brier_score_loss
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import accuracy_score

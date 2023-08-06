@@ -26,7 +26,7 @@ from sklearn.calibration import _SigmoidCalibration
 from betacal import BetaCalibration
 from sklearn.linear_model import LinearRegression
 from scipy.stats import binned_statistic
-from CalibrationM import confidance_ECE, convert_prob_2D
+from old.CalibrationM import confidance_ECE, convert_prob_2D
 from sklearn.metrics import brier_score_loss
 from sklearn.metrics import log_loss
 from sklearn.metrics import mean_squared_error
@@ -42,26 +42,37 @@ from sklearn.svm import SVC
 tvec = np.linspace(0.01, 0.99, 990)
 
 
-def split_train_calib_test(name, X, y, test_size, calib_size, orig_seed=0, tp=np.zeros(10)):
+def split_train_calib_test(name, X, y, test_size, calib_size, runs=1, tp=np.full(10,-1)):
     ### spliting data to train calib and test
-    for i in range(1000, 1100): # the for loop is to make sure the calib train and test split all consist of both classes of the binary dataset
-        seed = i + orig_seed
-        x_train_calib, x_test, y_train_calib, y_test = train_test_split(X, y, test_size=test_size, shuffle=True, random_state=seed)
-        x_train, x_calib, y_train, y_calib = train_test_split(x_train_calib, y_train_calib, test_size=calib_size, shuffle=True, random_state=seed)
-        if not tp.all() == 0: 
-            _, _, tp_train_calib, tp_test = train_test_split(X, tp, test_size=test_size, shuffle=True, random_state=seed)
-            _, _, tp_train, tp_calib = train_test_split(x_train_calib, tp_train_calib, test_size=calib_size, shuffle=True, random_state=seed)
+    data_runs = []
+    for orig_seed in range(runs):
+        data = {"name": name }
+        for i in range(1000, 1100): # the for loop is to make sure the calib train and test split all consist of both classes of the binary dataset
+            seed = i + orig_seed
+            x_train_calib, x_test, y_train_calib, y_test = train_test_split(X, y, test_size=test_size, shuffle=True, random_state=seed)
+            x_train, x_calib, y_train, y_calib = train_test_split(x_train_calib, y_train_calib, test_size=calib_size, shuffle=True, random_state=seed)
 
-        if tp.all() == 0: 
-            data = {"name":name, "x_train": x_train, "x_calib":x_calib, "x_test":x_test, "y_train":y_train, "y_calib":y_calib, "y_test":y_test}
+            # data["test_index"] = np.where(np.isin(X, x_test))[0]
+            data["X"] = X
+            data["y"] = y
+            data["x_train_calib"], data["x_test"] = x_train_calib, x_test
+            data["y_train_calib"], data["y_test"] = y_train_calib, y_test
+            data["x_train"], data["x_calib"] = x_train, x_calib
+            data["y_train"], data["y_calib"] = y_train, y_calib
 
-        else:
-            data = {"name":name, "x_train": x_train, "x_calib":x_calib, "x_test":x_test, "y_train":y_train, "y_calib":y_calib, "y_test":y_test, "tp_train":tp_train, "tp_calib":tp_calib, "tp_test":tp_test}
-        
-        if len(np.unique(data["y_calib"])) > 1 and len(np.unique(data["y_test"])) > 1 and len(np.unique(data["y_train"])) > 1:
-            break
 
-    return data
+            if tp.sum() != -10:
+                _, _, tp_train_calib, tp_test = train_test_split(X, tp, test_size=test_size, shuffle=True, random_state=seed)
+                _, _, tp_train, tp_calib = train_test_split(x_train_calib, tp_train_calib, test_size=calib_size, shuffle=True, random_state=seed)
+                data["tp"] = tp
+                data["tp_train_calib"], data["tp_test"] = tp_train_calib, tp_test
+                data["tp_train"], data["tp_calib"] = tp_train, tp_calib
+            
+            if len(np.unique(data["y_calib"])) > 1 and len(np.unique(data["y_test"])) > 1 and len(np.unique(data["y_train"])) > 1:
+                break
+        data_runs.append(data)
+
+    return data_runs
 
 def CV_split_train_calib_test(name, X, y, folds=10, seed=0, tp=np.full(10,-1)):
     
@@ -613,6 +624,22 @@ def mean_and_ranking_table(results_dict, metrics, calib_methods, data_list, save
         res += str(df)
         
     return df_dict
+
+def vialin_plot(results_dict, metrics, calib_methods, data_list):
+
+    # save results as txt
+    df_dict = {}
+    for data in data_list:
+        for metric in metrics:
+            df = pd.DataFrame(columns=calib_methods)
+            for method in calib_methods:
+                df[method] = np.array(results_dict[data+ "_" + method + "_"+ metric])
+            print("df", df.head())
+            plt.violinplot(df, showmeans=True)
+            plt.savefig(f"results/vialin_plot/{data}_{metric}.pdf", format='pdf', transparent=True)
+            plt.close()        
+    return df_dict
+
 
 def exp_mean_rank_through_time(exp_df_all, exp_df, exp_value, value="rank", exp_test="Calibration"):
     value_index = -1

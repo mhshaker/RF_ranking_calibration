@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from sklearn.calibration import _SigmoidCalibration
-from CalibrationM import convert_prob_2D
+from old.CalibrationM import convert_prob_2D
 from sklearn.metrics import brier_score_loss
 
 class CRF_calib(BaseEstimator, ClassifierMixin):
