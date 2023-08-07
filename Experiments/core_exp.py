@@ -29,7 +29,7 @@ def run_exp(exp_key, exp_values, params):
         res_runs = {} # results for each data set will be saved in here.
 
         # load data for different runs
-        data_runs = load_data_runs(params, exp_data_name, ".") # "../../"
+        data_runs = load_data_runs(params, exp_data_name, params["path"]) # "../../"
 
         # for data in data_folds/randomsplits running the same dataset multiple times - res_list is a list of all the results on given metrics
         res_list = Parallel(n_jobs=-1)(delayed(cal.calibration)(data, params) for data, params in zip(data_runs, np.repeat(params, len(data_runs))))

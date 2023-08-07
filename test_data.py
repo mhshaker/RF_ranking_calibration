@@ -12,6 +12,7 @@ def test_data_runs_cv():
     params = {
         "seed": 0,
         "runs": 2,
+        "path": ".",
         "exp_name": "split_test",
         "split": "CV", #CV و random_split
         "cv_folds": 3,
@@ -33,6 +34,7 @@ def test_data_runs_random_split():
     params = {
         "seed": 0,
         "runs": 5,
+        "path": ".",
         "exp_name": "split_test",
         "split": "random_split", #CV و random_split
         "test_split": 0.3,
@@ -56,6 +58,7 @@ def test_data_synthetic_parts(): # test to see if a data dict consists of all th
     params = {
         "seed": 0,
         "runs": 5,
+        "path": ".",
         "exp_name": "split_test",
         "split": "random_split", #CV و random_split
         "test_split": 0.3,
@@ -86,6 +89,7 @@ def test_data_real(): # test to see if a data dict consists of all the parts tha
     params = {
         "seed": 0,
         "runs": 3,
+        "path": ".",
         "exp_name": "split_test",
         "split": "CV", #CV و random_split
         "cv_folds": 10,

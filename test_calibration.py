@@ -1,4 +1,3 @@
-import Experiments.core_calib as cal
 import Experiments.core_exp as exp
 
 
@@ -8,6 +7,7 @@ def test_run_exp(): # test to see if run_exp parallel processing works
     params = {
         "seed": 0,
         "runs": 3,
+        "path": ".",
         "exp_name": "split_test",
         "split": "CV", #CV و random_split
         "cv_folds": 3,
