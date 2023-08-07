@@ -4,7 +4,8 @@ import os
 sys.path.append('../../') # to access the files in higher directories
 sys.path.append('../') # to access the files in higher directories
 import Data.data_provider as dp
-import core_calib as cal
+# import core_calib as cal
+from Experiments import cal
 import numpy as np
 from joblib import Parallel, delayed
 import matplotlib.pyplot as plt
@@ -28,22 +29,23 @@ def run_exp(exp_key, exp_values, params):
         res_runs = {} # results for each data set will be saved in here.
 
         # load data for different runs
-        data_runs = load_data_runs(params, exp_data_name)
+        data_runs = load_data_runs(params, exp_data_name, ".") # "../../"
 
-        # for data in data_folds: # running the same dataset multiple times
-        res_list = Parallel(n_jobs=-1)(delayed(cal.calibration)(data, params) for data, params in zip(data_runs, np.repeat(params, params["cv_folds"])))
+        # for data in data_folds/randomsplits running the same dataset multiple times - res_list is a list of all the results on given metrics
+        res_list = Parallel(n_jobs=-1)(delayed(cal.calibration)(data, params) for data, params in zip(data_runs, np.repeat(params, len(data_runs))))
         
-        for res in res_list:
+        for res in res_list: # res_runs is a dict of all the metrics which are a list of results of multiple runs 
             res_runs = cal.update_runs(res_runs, res) # calib results for every run for the same dataset is aggregated in res_runs (ex. acc of every run as an array)
 
         plot_reliability_diagram(params, exp_data_name, res_runs, data_runs)
             
         exp_res.update(res_runs) # merge results of all datasets together
+
         print(f"exp_param {exp_param} done")
 
     return exp_res, data_list
         
-def load_data_runs(params, exp_data_name):
+def load_data_runs(params, exp_data_name, real_data_path="."):
     data_runs = []
     if "synthetic" in params["data_name"]:
         if params["data_name"] == "synthetic":
@@ -88,15 +90,15 @@ def load_data_runs(params, exp_data_name):
             plt.close()
 
         if params["split"] == "CV":
-            data_folds = cal.CV_split_train_calib_test(exp_data_name, X,y,params["cv_folds"],params["seed"],tp)
+            data_folds = cal.CV_split_train_calib_test(exp_data_name, X,y,params["cv_folds"],params["runs"],tp)
         elif params["split"] == "random_split":
-            data_folds = [cal.split_train_calib_test(exp_data_name, X,y,params["test_split"], params["calib_split"],params["seed"],tp)]
+            data_folds = cal.split_train_calib_test(exp_data_name, X,y,params["test_split"], params["calib_split"],params["runs"],tp)
     else:
-        X, y = dp.load_data(params["data_name"], "../../")
+        X, y = dp.load_data(params["data_name"], real_data_path)
         if params["split"] == "CV":
-            data_folds = cal.CV_split_train_calib_test(exp_data_name, X,y,params["cv_folds"],params["seed"])
+            data_folds = cal.CV_split_train_calib_test(exp_data_name, X,y,params["cv_folds"],params["runs"])
         elif params["split"] == "random_split":
-            data_folds = [cal.split_train_calib_test(exp_data_name, X,y,params["test_split"], params["calib_split"],params["seed"])]
+            data_folds = cal.split_train_calib_test(exp_data_name, X,y,params["test_split"], params["calib_split"],params["runs"])
     for data in data_folds:    
         data_runs.append(data)
     

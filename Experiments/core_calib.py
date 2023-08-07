@@ -10,7 +10,6 @@ import numpy as np
 np.set_printoptions(edgeitems=30, linewidth=100000, 
     formatter=dict(float=lambda x: "%.3g" % x))
 import pandas as pd
-import Data.data_provider as dp
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from estimators.IR_RF_estimator import IR_RF
@@ -46,8 +45,9 @@ def split_train_calib_test(name, X, y, test_size, calib_size, runs=1, tp=np.full
     ### spliting data to train calib and test
     data_runs = []
     for orig_seed in range(runs):
-        data = {"name": name }
+        
         for i in range(1000, 1100): # the for loop is to make sure the calib train and test split all consist of both classes of the binary dataset
+            data = {"name": name }
             seed = i + orig_seed
             x_train_calib, x_test, y_train_calib, y_test = train_test_split(X, y, test_size=test_size, shuffle=True, random_state=seed)
             x_train, x_calib, y_train, y_calib = train_test_split(x_train_calib, y_train_calib, test_size=calib_size, shuffle=True, random_state=seed)
@@ -74,32 +74,34 @@ def split_train_calib_test(name, X, y, test_size, calib_size, runs=1, tp=np.full
 
     return data_runs
 
-def CV_split_train_calib_test(name, X, y, folds=10, seed=0, tp=np.full(10,-1)):
+def CV_split_train_calib_test(name, X, y, folds=10, runs=0, tp=np.full(10,-1)):
     
-    data_folds = []
-    skf = StratifiedKFold(n_splits=folds, shuffle=True, random_state=seed)
+    data_runs = []
 
-    for train_calib_index, test_index in skf.split(X, y):
-        data = {"name": name }
-        data["test_index"] = test_index
-        data["X"] = X
-        data["y"] = y
-        data["x_train_calib"], data["x_test"] = X[train_calib_index], X[test_index]
-        data["y_train_calib"], data["y_test"] = y[train_calib_index], y[test_index]
-        if tp.sum() != -10:
-            data["tp"] = tp
-            data["tp_train_calib"], data["tp_test"] = tp[train_calib_index], tp[test_index]
+    for seed in range(runs): # by setting seed to the range of runs all folds of every CV with different seed will be in data_runs
+        skf = StratifiedKFold(n_splits=folds, shuffle=True, random_state=seed)
 
-        skf2 = StratifiedKFold(n_splits=folds-1, shuffle=True, random_state=seed)
-        train_index, calib_index = next(skf2.split(data["x_train_calib"], data["y_train_calib"]))
-        data["x_train"], data["x_calib"] = data["x_train_calib"][train_index], data["x_train_calib"][calib_index]
-        data["y_train"], data["y_calib"] = data["y_train_calib"][train_index], data["y_train_calib"][calib_index]
-        if tp.sum() != -10:
-            data["tp_train"], data["tp_calib"] = data["tp_train_calib"][train_index], data["tp_train_calib"][calib_index]
-        
-        data_folds.append(data)
+        for train_calib_index, test_index in skf.split(X, y):
+            data = {"name": name }
+            # data["test_index"] = test_index
+            data["X"] = X
+            data["y"] = y
+            data["x_train_calib"], data["x_test"] = X[train_calib_index], X[test_index]
+            data["y_train_calib"], data["y_test"] = y[train_calib_index], y[test_index]
+            if tp.sum() != -10:
+                data["tp"] = tp
+                data["tp_train_calib"], data["tp_test"] = tp[train_calib_index], tp[test_index]
 
-    return data_folds
+            skf2 = StratifiedKFold(n_splits=folds-1, shuffle=True, random_state=seed)
+            train_index, calib_index = next(skf2.split(data["x_train_calib"], data["y_train_calib"]))
+            data["x_train"], data["x_calib"] = data["x_train_calib"][train_index], data["x_train_calib"][calib_index]
+            data["y_train"], data["y_calib"] = data["y_train_calib"][train_index], data["y_train_calib"][calib_index]
+            if tp.sum() != -10:
+                data["tp_train"], data["tp_calib"] = data["tp_train_calib"][train_index], data["tp_train_calib"][calib_index]
+            
+            data_runs.append(data) # data is one fold of the CV
+
+    return data_runs
 
 
 def calibration(data, params, model_name="RF"):
@@ -163,7 +165,8 @@ def calibration(data, params, model_name="RF"):
 
     rf_p_test = RF.predict_proba(data["x_test"])
     results_dict[data["name"] + "_RF_prob"] = rf_p_test
-    results_dict[data["name"] + "_RF_prob_c"] = RF.predict_proba(data["X"]) # prob c is on all X data
+    if "CL" in metrics:
+        results_dict[data["name"] + "_RF_prob_c"] = RF.predict_proba(data["X"]) # prob c is on all X data
     # results_dict[data["name"] + "_RF_prob_calib"] = rf_p_calib
 
 
@@ -537,12 +540,12 @@ def calibration(data, params, model_name="RF"):
                 e_labels_mean = data["tp"][e_index].mean()
                 c_method[e_index] = e_labels_mean
             
-            c_method_test = c_method[data["test_index"]]
+            # c_method_test = c_method[data["test_index"]]
             
-            CL = mean_squared_error(results_dict[f"{data_name}_{method}_prob"][:,1], c_method_test) # S,C
-            GL = mean_squared_error(c_method_test, data["tp_test"]) # C, Q
-            IL = mean_squared_error(data["tp_test"], data["y_test"]) # Q, Y
-            BS = mean_squared_error(data["y_test"], results_dict[f"{data_name}_{method}_prob"][:,1])
+            CL = mean_squared_error(results_dict[f"{data_name}_{method}_prob_c"][:,1], c_method) # S,C
+            GL = mean_squared_error(c_method, data["tp"]) # C, Q
+            IL = mean_squared_error(data["tp"], data["y"]) # Q, Y
+            BS = mean_squared_error(data["y"], results_dict[f"{data_name}_{method}_prob_c"][:,1])
             results_dict[f"{data_name}_{method}_CL"] = CL
             results_dict[f"{data_name}_{method}_GL"] = GL
             results_dict[f"{data_name}_{method}_IL"] = IL
