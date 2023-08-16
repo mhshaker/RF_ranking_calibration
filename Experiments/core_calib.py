@@ -104,7 +104,7 @@ def CV_split_train_calib_test(name, X, y, folds=10, runs=0, tp=np.full(10,-1)):
     return data_runs
 
 
-def calibration(data, params, model_name="RF"):
+def calibration(data, params, model_name="RF", filter_res=True):
     data_name = data["name"]
     calib_methods = params["calib_methods"] 
     metrics = params["metrics"]
@@ -505,10 +505,11 @@ def calibration(data, params, model_name="RF"):
         for method in calib_methods:
             pt, pp = calibration_curve(data["y_test"], results_dict[f"{data_name}_{method}_prob"][:,1], n_bins=params["ece_bins"], strategy=params["bin_strategy"])
             results_dict[f"{data_name}_{method}_ece"] = mean_squared_error(pt, pp)
+            # results_dict[f"{data_name}_{method}_ece"] = 0 # will be updated in the plot function
             # results_dict[f"{data_name}_{method}_ece"] = confidance_ECE(results_dict[f"{data_name}_{method}_prob"], data["y_test"], bins=params["ece_bins"])
 
     if "brier" in metrics:
-        for method in calib_methods:
+        for method in calib_methods: 
             results_dict[f"{data_name}_{method}_brier"] = brier_score_loss(data["y_test"], results_dict[f"{data_name}_{method}_prob"][:,1])
 
     if "logloss" in metrics:
@@ -552,7 +553,11 @@ def calibration(data, params, model_name="RF"):
             results_dict[f"{data_name}_{method}_BS"] = CL + GL + IL
             results_dict[f"{data_name}_{method}_BS2"] = BS
 
-    return results_dict
+    if filter_res:
+        filtered_res_dict = {key: value for key, value in results_dict.items() if "_prob" not in key}
+        filtered_res_dict = {key: value for key, value in filtered_res_dict.items() if "_fit" not in key}
+
+    return filtered_res_dict
 
 def update_runs(ref_dict, new_dict):
 
@@ -628,21 +633,34 @@ def mean_and_ranking_table(results_dict, metrics, calib_methods, data_list, save
         
     return df_dict
 
-def vialin_plot(results_dict, metrics, calib_methods, data_list):
+def make_table(results_dict, metrics, calib_methods, data_list, mean_and_rank=True):
 
-    # save results as txt
     df_dict = {}
-    for data in data_list:
-        for metric in metrics:
-            df = pd.DataFrame(columns=calib_methods)
-            for method in calib_methods:
-                df[method] = np.array(results_dict[data+ "_" + method + "_"+ metric])
-            print("df", df.head())
-            plt.violinplot(df, showmeans=True)
-            plt.savefig(f"results/vialin_plot/{data}_{metric}.pdf", format='pdf', transparent=True)
-            plt.close()        
-    return df_dict
 
+    for metric in metrics:
+        df_dict[metric] = pd.DataFrame(columns=calib_methods)
+        # df_dict[metric] = {}
+        
+        for data in data_list:
+            data_df = pd.DataFrame(columns=calib_methods)
+            for method in calib_methods:
+                data_df[method] = np.array(results_dict[data+ "_" + method + "_"+ metric])
+            df_dict[metric] = pd.concat([df_dict[metric], data_df], ignore_index=True)
+            # df_dict[metric][data] = data_df
+        
+        if mean_and_rank:
+            mean_res = df_dict[metric].mean()
+            if metric == "ece" or metric == "brier" or metric == "tce" or metric == "logloss":
+                df_rank = df_dict[metric].rank(axis=1, ascending = True)
+            else:
+                df_rank = df_dict[metric].rank(axis=1, ascending = False)
+
+            mean_rank = df_rank.mean()
+            df_dict[metric].loc["Mean"] = mean_res
+            df_dict[metric].loc["Rank"] = mean_rank
+
+        
+    return df_dict
 
 def exp_mean_rank_through_time(exp_df_all, exp_df, exp_value, value="rank", exp_test="Calibration"):
     value_index = -1
@@ -772,6 +790,7 @@ def plot_probs(exp_data_name, probs_runs, data_runs, params, ref_plot_name="RF",
             gray_patch = plt.plot([],[], marker='o', markersize=10, color='gray', linestyle='')[0]
             calib_patch = plt.plot([],[], marker='_', markersize=15, color='blue', linestyle='')[0]
             plt.legend((orchid_patch, gray_patch, calib_patch), (method + ece_txt, 'RF' + ece_ref, method + " fit"), loc='upper left')
+            
         path = f"./results/{params['exp_name']}/{method}"
         if not os.path.exists(path):
             os.makedirs(path)
@@ -790,3 +809,58 @@ def plot_probs(exp_data_name, probs_runs, data_runs, params, ref_plot_name="RF",
             plt.savefig(f"{path}/{method}_{exp_data_name}_hist.pdf", format='pdf', transparent=True)
             plt.close()
 
+
+def vialin_plot(results_dict, metrics, calib_methods, data_list):
+
+    # save results as txt
+    df_dict = {}
+    for data in data_list:
+        for metric in metrics:
+            df = pd.DataFrame(columns=calib_methods)
+            for method in calib_methods:
+                df[method] = np.array(results_dict[data+ "_" + method + "_"+ metric])
+            # print("df", df.head())
+            # fig, ax1 = plt.subplots()
+            # ax1.violinplot(df, showmeans=True) 
+            # ax1.set_xticks(np.arange(len(calib_methods)+1), labels=[""]+ calib_methods)
+            # # Rotate the tick labels by 90 degrees
+            # plt.xticks(rotation = 90) 
+            # plt.savefig(f"results/vialin_plot/{data}_{metric}.pdf", format='pdf', transparent=True)
+            # plt.close() 
+
+            # Create a figure and axis
+            fig, ax = plt.subplots()
+
+            # Plot the violins with the means and standard errors
+            violins = ax.violinplot(df,
+                                    positions=np.arange(len(calib_methods)),
+                                    showmedians=True)
+
+            # Customization
+            ax.set_xticks(np.arange(len(calib_methods)))
+            ax.set_xticklabels(calib_methods)
+            ax.set_xlabel('Groups')
+            ax.set_ylabel('Values')
+            ax.set_title('Violin Plot with Standard Error')
+            plt.xticks(rotation = 45)
+            # # Add error bars for each group
+            # for i, (mean, se) in enumerate(zip(means, std_errors)):
+            #     ax.errorbar(i, mean, yerr=se, color='black', capsize=5, linewidth=1.5, marker='o')
+
+            plt.grid(True)
+            plt.savefig(f"results/vialin_plot/{data}_{metric}.pdf", format='pdf', transparent=True)
+            plt.close() 
+    return df_dict
+
+
+## Kendalltau test ##
+# import scipy.stats as stats
+# import numpy as np
+
+# ece_ranks = np.array(tables["ece"].loc["Rank"])
+# brier_ranks = np.array(tables["brier"].loc["Rank"])
+# logloss_ranks = np.array(tables["logloss"].loc["Rank"])
+# acc_ranks = np.array(tables["acc"].loc["Rank"])
+
+# tau, p_value = stats.kendalltau(brier_ranks, acc_ranks)
+# print(f"tau {tau} p_value {p_value}")

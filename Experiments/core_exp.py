@@ -37,8 +37,9 @@ def run_exp(exp_key, exp_values, params):
         for res in res_list: # res_runs is a dict of all the metrics which are a list of results of multiple runs 
             res_runs = cal.update_runs(res_runs, res) # calib results for every run for the same dataset is aggregated in res_runs (ex. acc of every run as an array)
 
-        plot_reliability_diagram(params, exp_data_name, res_runs, data_runs)
-            
+        if params["plot"]:
+            plot_reliability_diagram(params, exp_data_name, res_runs, data_runs)
+                
         exp_res.update(res_runs) # merge results of all datasets together
 
         print(f"exp_param {exp_param} done")
@@ -105,11 +106,10 @@ def load_data_runs(params, exp_data_name, real_data_path="."):
     return data_runs
 
 def plot_reliability_diagram(params, exp_data_name, res_runs, data_runs):
-    if params["plot"]: # and params["data_name"] == "synthetic":
-        cal.plot_probs(exp_data_name, res_runs, data_runs, params, "RF", False, True) 
+    cal.plot_probs(exp_data_name, res_runs, data_runs, params, "RF", False, True, False) 
     
-    if params["plot"] and params["data_name"] != "synthetic":
+    if params["data_name"] != "synthetic":
         tmp = params["data_name"]
         params["data_name"] = tmp + "ece"
-        cal.plot_probs(exp_data_name, res_runs, data_runs, params, "RF", False, True) 
+        cal.plot_probs(exp_data_name, res_runs, data_runs, params, "RF", False, True, False) 
         params["data_name"] = tmp

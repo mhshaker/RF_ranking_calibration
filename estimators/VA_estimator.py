@@ -32,4 +32,10 @@ class VA_calib(BaseEstimator, ClassifierMixin):
 
         interval = np.concatenate((p0.reshape(-1,1), p1.reshape(-1,1)), axis=1)
         res = np.mean(interval, axis=1)
+        
+        nan_indices = np.isnan(res)
+        nan_indices_list = np.where(nan_indices)[0]
+        if len(nan_indices_list) > 0:
+            uniform_samples = np.random.uniform(0,1,len(nan_indices_list))
+            res[nan_indices] = uniform_samples
         return res
