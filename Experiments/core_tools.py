@@ -148,3 +148,18 @@ def add_rank_mean(tabels):
         tabels[metric].loc["Mean"] = mean_res
         tabels[metric].loc["Rank"] = mean_rank
     return tabels
+
+
+## Kendalltau test ##
+
+# import scipy.stats as stats
+# import numpy as np
+
+# tce_ranks = np.array(tables["tce"].loc["Rank"])
+# ece_ranks = np.array(tables["ece"].loc["Rank"])
+# brier_ranks = np.array(tables["BS"].loc["Rank"])
+# logloss_ranks = np.array(tables["logloss"].loc["Rank"])
+# acc_ranks = np.array(tables["acc"].loc["Rank"])
+
+# tau, p_value = stats.kendalltau(tce_ranks, brier_ranks)
+# print(f"tau {tau} p_value {p_value}")

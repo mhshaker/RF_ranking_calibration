@@ -851,16 +851,3 @@ def vialin_plot(results_dict, metrics, calib_methods, data_list):
             plt.savefig(f"results/vialin_plot/{data}_{metric}.pdf", format='pdf', transparent=True)
             plt.close() 
     return df_dict
-
-
-## Kendalltau test ##
-# import scipy.stats as stats
-# import numpy as np
-
-# ece_ranks = np.array(tables["ece"].loc["Rank"])
-# brier_ranks = np.array(tables["brier"].loc["Rank"])
-# logloss_ranks = np.array(tables["logloss"].loc["Rank"])
-# acc_ranks = np.array(tables["acc"].loc["Rank"])
-
-# tau, p_value = stats.kendalltau(brier_ranks, acc_ranks)
-# print(f"tau {tau} p_value {p_value}")
