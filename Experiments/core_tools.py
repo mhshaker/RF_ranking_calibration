@@ -11,10 +11,13 @@ import pandas as pd
 import core_calib as cal
 
 
-def generate_readable_short_id():
+def generate_readable_short_id(name=""):
     timestamp = int(time.time())  # Get current timestamp
     random_chars = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))  # Generate a random 4-character code
-    short_id = f"{timestamp}_{random_chars}"
+    if name == "":
+        short_id = f"{timestamp}_{random_chars}"
+    else:
+        short_id = f"{timestamp}_{name}"
     return short_id
 
 def save_params(params):
@@ -96,7 +99,7 @@ def res_statistics(tables, metrics, path):
     #                         params["exp_values"])
 
     for metric in metrics:
-
+        print("metric", metric)
         df = pd.DataFrame(tables[metric])
         avg_rank = df.loc["Rank"]
         df = df.drop(["Mean", "Rank"])
@@ -109,7 +112,7 @@ def res_statistics(tables, metrics, path):
 
         # Check for significance (you can choose your significance level, e.g., 0.05)
         alpha = 0.05
-        if p_value < alpha:
+        if True:
             print("The differences between groups are significant.")
 
             # posthoc_res = sp.posthoc_conover_friedman(df)

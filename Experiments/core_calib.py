@@ -104,7 +104,7 @@ def CV_split_train_calib_test(name, X, y, folds=10, runs=0, tp=np.full(10,-1)):
     return data_runs
 
 
-def calibration(data, params, model_name="RF", filter_res=True):
+def calibration(data, params):
     data_name = data["name"]
     calib_methods = params["calib_methods"] 
     metrics = params["metrics"]
@@ -137,7 +137,7 @@ def calibration(data, params, model_name="RF", filter_res=True):
             rf_best.fit(data["x_train_calib"], data["y_train_calib"])
 
     elif params["hyper_opt"] == "Manual":
-        rf_best = IR_RF(n_estimators=params["n_estimators"], max_depth=params["depth"], oob_score=params["oob"], random_state=params["seed"])
+        rf_best = IR_RF(n_estimators=params["search_space"]["n_estimators"][0], max_depth=params["depth"], oob_score=params["oob"], random_state=params["seed"])
         if params["oob"] == False:
             rf_best.fit(data["x_train"], data["y_train"])
         else:
@@ -201,7 +201,7 @@ def calibration(data, params, model_name="RF", filter_res=True):
     ### full data (train + calib)
     method = "RF_d"
     if method in calib_methods:
-        rf_d = IR_RF(n_estimators=params["n_estimators"], random_state=params["seed"]).fit(data["x_train_calib"], data["y_train_calib"])
+        rf_d = IR_RF(n_estimators=params["search_space"]["n_estimators"][0], random_state=params["seed"]).fit(data["x_train_calib"], data["y_train_calib"])
         rf_d_p_test = rf_d.predict_proba(data["x_test"])
         results_dict[f"{data_name}_{method}_prob"] = rf_d_p_test
         if "CL" in metrics:
@@ -218,30 +218,38 @@ def calibration(data, params, model_name="RF", filter_res=True):
         if "CL" in metrics:
             results_dict[f"{data_name}_{method}_prob_c"] = RF_f.predict_proba(data["X"])
     
-    bc = Boot_calib(boot_count=params["boot_count"])
-
-    method = "RF_ens_r"
-    if method in calib_methods:
-        RF_ens_p_test_fd = bc.predict_ens(data["x_test"], data["x_train_calib"], data["y_train_calib"], RF)
-        results_dict[f"{data_name}_{method}_prob"] = RF_ens_p_test_fd
-        if "CL" in metrics:
-            results_dict[f"{data_name}_{method}_prob_c"] = bc.predict_ens(data["X"], data["x_train_calib"], data["y_train_calib"], RF)
-
-    method = "RF_ens_k"
-    if method in calib_methods:
-        RF_ens_k_p_test_fd = bc.predict_ens_params(data["x_test"], data["x_train_calib"], data["y_train_calib"], params["opt_top_K"], params["seed"])
-        results_dict[f"{data_name}_{method}_prob"] = RF_ens_k_p_test_fd
-        if "CL" in metrics:
-            results_dict[f"{data_name}_{method}_prob_c"] = bc.predict_ens_params(data["X"], data["x_train_calib"], data["y_train_calib"], params["opt_top_K"], params["seed"])
 
     method = "RF_large"
     if method in calib_methods:
-        RF_large_p_test_fd = bc.predict_largeRF(data["x_test"], data["x_train_calib"], data["y_train_calib"], RF)
+        # RF_large_p_test_fd = bc.predict_largeRF(data["x_test"], data["x_train_calib"], data["y_train_calib"], RF)
+
+        best_rf_params = RF.get_params().copy()
+        best_rf_params['n_estimators'] = best_rf_params['n_estimators'] * params["boot_count"]
+
+        rf_l = IR_RF(**best_rf_params).fit(data["x_train_calib"], data["y_train_calib"])
+        RF_large_p_test_fd = rf_l.predict_proba(data["x_test"])
+
         results_dict[f"{data_name}_{method}_prob"] = RF_large_p_test_fd
         if "CL" in metrics:
-            results_dict[f"{data_name}_{method}_prob_c"] = bc.predict_largeRF(data["X"], data["x_train_calib"], data["y_train_calib"], RF)
+            # results_dict[f"{data_name}_{method}_prob_c"] = bc.predict_largeRF(data["X"], data["x_train_calib"], data["y_train_calib"], RF)
+            results_dict[f"{data_name}_{method}_prob_c"] = rf_l.predict_proba(data["X"])
 
 
+    # bc = Boot_calib(boot_count=params["boot_count"])
+
+    # method = "RF_ens_r"
+    # if method in calib_methods:
+    #     RF_ens_p_test_fd = bc.predict_ens(data["x_test"], data["x_train_calib"], data["y_train_calib"], RF)
+    #     results_dict[f"{data_name}_{method}_prob"] = RF_ens_p_test_fd
+    #     if "CL" in metrics:
+    #         results_dict[f"{data_name}_{method}_prob_c"] = bc.predict_ens(data["X"], data["x_train_calib"], data["y_train_calib"], RF)
+
+    # method = "RF_ens_k"
+    # if method in calib_methods:
+    #     RF_ens_k_p_test_fd = bc.predict_ens_params(data["x_test"], data["x_train_calib"], data["y_train_calib"], params["opt_top_K"], params["seed"])
+    #     results_dict[f"{data_name}_{method}_prob"] = RF_ens_k_p_test_fd
+    #     if "CL" in metrics:
+    #         results_dict[f"{data_name}_{method}_prob_c"] = bc.predict_ens_params(data["X"], data["x_train_calib"], data["y_train_calib"], params["opt_top_K"], params["seed"])
 
     method = "Platt"
     if method in calib_methods:
@@ -430,7 +438,7 @@ def calibration(data, params, model_name="RF", filter_res=True):
 
     # method = "Platt_d"
     # if method in calib_methods:
-    #     rf_d_platt = IR_RF(n_estimators=params["n_estimators"], random_state=params["seed"]).fit(data["x_train"], data["y_train"])
+    #     rf_d_platt = IR_RF(n_estimators=params["search_space"]["n_estimators"][0], random_state=params["seed"]).fit(data["x_train"], data["y_train"])
     #     rf_d_p_test = rf_d.predict_proba(data["x_test"])
     #     rf_d_p_calib = rf_d_platt.predict_proba(data["x_calib"])
     #     plat_calib = _SigmoidCalibration().fit(rf_d_p_calib[:,1], data["y_calib"])
@@ -553,11 +561,15 @@ def calibration(data, params, model_name="RF", filter_res=True):
             results_dict[f"{data_name}_{method}_BS"] = CL + GL + IL
             results_dict[f"{data_name}_{method}_BS2"] = BS
 
-    if filter_res:
+    if params["plot"] == False:
         filtered_res_dict = {key: value for key, value in results_dict.items() if "_prob" not in key}
         filtered_res_dict = {key: value for key, value in filtered_res_dict.items() if "_fit" not in key}
-
-    return filtered_res_dict
+        return filtered_res_dict
+    else:
+        for key in results_dict.keys():
+            if "_prob" in key or "_fit" in key:  
+                results_dict[key] = results_dict[key].tolist()
+        return results_dict
 
 def update_runs(ref_dict, new_dict):
 
@@ -791,7 +803,7 @@ def plot_probs(exp_data_name, probs_runs, data_runs, params, ref_plot_name="RF",
             calib_patch = plt.plot([],[], marker='_', markersize=15, color='blue', linestyle='')[0]
             plt.legend((orchid_patch, gray_patch, calib_patch), (method + ece_txt, 'RF' + ece_ref, method + " fit"), loc='upper left')
             
-        path = f"./results/{params['exp_name']}/{method}"
+        path = f"./results/{params['exp_name']}/plots/{method}"
         if not os.path.exists(path):
             os.makedirs(path)
 
