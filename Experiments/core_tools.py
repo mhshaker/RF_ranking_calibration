@@ -10,6 +10,8 @@ import numpy as np
 import pandas as pd
 import core_calib as cal
 
+import Data.data_provider as dp
+
 
 def generate_readable_short_id(name=""):
     timestamp = int(time.time())  # Get current timestamp
@@ -84,7 +86,7 @@ def save_metrics_to_latex(tables, metrics, exp_name):
         tables[metric+ "_std"].round(5).to_latex(f"{path}/{metric}_std.csv")
 
 def res_statistics(tables, metrics, path):
-    path += "/statistics_nf"
+    path += "/statistics_wc"
 
     # tables = cal.mean_and_ranking_table(calib_results_dict, 
     #                                     params["metrics"],
@@ -117,12 +119,12 @@ def res_statistics(tables, metrics, path):
 
             # posthoc_res = sp.posthoc_conover_friedman(df)
 
-            posthoc_res = sp.posthoc_nemenyi_friedman(df)
+            # posthoc_res = sp.posthoc_nemenyi_friedman(df)
 
-            # w_df = np.array(df.T)
-            # posthoc_res = sp.posthoc_wilcoxon(w_df, p_adjust="hommel")
-            # posthoc_res.columns = df.columns
-            # posthoc_res = posthoc_res.set_index(df.columns)
+            w_df = np.array(df.T)
+            posthoc_res = sp.posthoc_wilcoxon(w_df, p_adjust="hommel")
+            posthoc_res.columns = df.columns
+            posthoc_res = posthoc_res.set_index(df.columns)
 
             # sp.sign_plot(posthoc_res)
             # plt.show()
@@ -152,6 +154,43 @@ def add_rank_mean(tabels):
         tabels[metric].loc["Rank"] = mean_rank
     return tabels
 
+from collections import Counter
+
+def real_data_info(data_list):
+    info = pd.DataFrame()
+
+    data_size = []
+    data_features = []
+    data_mjc = []
+    for data_name in data_list:
+        X, y = dp.load_data(data_name, "../../")
+        if len(y) > 0:
+            # Sample dataset
+            data = {
+                'class': y
+            }
+
+            # Convert the data dictionary into a DataFrame
+            df = pd.DataFrame(data)
+
+            # Calculate majority class percentage
+            class_counts = Counter(df['class'])
+            total_samples = len(df)
+            majority_class = class_counts.most_common(1)[0][0]
+            majority_class_count = class_counts[majority_class]
+            majority_class_percentage = (majority_class_count / total_samples) * 100
+
+            data_size.append(len(y))
+            data_features.append(X.shape[1])
+            data_mjc.append(majority_class_percentage)
+            # print(f"{data_name} done")
+    
+    info["Name"] = data_list
+    info["instances"] = data_size
+    info["features"] = data_features
+    info["major class"] = data_mjc
+
+    return info
 
 ## Kendalltau test ##
 

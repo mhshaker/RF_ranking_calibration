@@ -57,7 +57,7 @@ def test_run_exp(): # test to see if run_exp parallel processing works
     expected_keys.sort()
 
     assert exp_keys == expected_keys
-    # assert len(exp_res["2_RF_prob"]) == 9
+    # assert len(exp_res["2_RF_prob"]) == 9 # this test is removed because when plot is false, there is no _prob in the dict to save memory
     assert len(exp_res["2_RF_ece"]) == 9 # if plot set to true then it will be 1
     assert len(exp_res["2_RF_acc"]) == 9
     assert len(exp_res["2_RF_brier"]) == 9
@@ -124,7 +124,7 @@ def test_multi_run_avg(): # test to see if the avg of multi splits of a data are
     sum_all_Beta = np.array(res_runs["expname_Beta_acc"]) + np.array(res_runs2["expname_Beta_acc"])
     sum_all_CRF = np.array(res_runs["expname_CRF_acc"]) + np.array(res_runs2["expname_CRF_acc"])
     sum_all_VA = np.array(res_runs["expname_VA_acc"]) + np.array(res_runs2["expname_VA_acc"])
-    
+
     assert np.all(sum_all_RF == 1)
     assert np.all(sum_all_Beta == 1)
     assert np.all(sum_all_CRF == 1)

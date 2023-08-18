@@ -1,0 +1,26 @@
+\begin{tabular}{llrrr}
+\toprule
+{} &                  Name &  instances &  features &  major class \\
+\midrule
+1  &            parkinsons &        195 &        22 &         75.4 \\
+2  &  Sonar\_Mine\_Rock\_Data &        208 &        60 &         53.4 \\
+3  &    HRCompetencyScores &        300 &         9 &         53.0 \\
+4  &                 heart &        303 &        13 &         54.5 \\
+5  &             vertebral &        310 &         6 &         67.7 \\
+6  &            ionosphere &        351 &        34 &         64.1 \\
+7  &                  wdbc &        569 &        30 &         62.7 \\
+8  &                breast &        569 &        30 &         62.7 \\
+9  &              diabetes &        768 &         8 &         65.1 \\
+10 &                  QSAR &       1055 &        41 &         66.3 \\
+11 &            hillvalley &       1212 &       100 &         50.0 \\
+12 &                  bank &       1372 &         4 &         55.5 \\
+13 &                   pc4 &       1458 &        37 &         87.8 \\
+14 &                   SPF &       1941 &        33 &         65.3 \\
+15 &                 scene &       2407 &       299 &         82.1 \\
+16 &        Customer\_Churn &       3150 &        13 &         84.3 \\
+17 &              spambase &       4601 &        57 &         60.6 \\
+18 &                  wilt &       4839 &         5 &         94.6 \\
+19 &                   jm1 &      10880 &        21 &         80.7 \\
+20 &                   eeg &      14980 &        14 &         55.1 \\
+\bottomrule
+\end{tabular}
