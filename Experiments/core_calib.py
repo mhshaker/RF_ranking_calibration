@@ -104,7 +104,7 @@ def CV_split_train_calib_test(name, X, y, folds=10, runs=0, tp=np.full(10,-1)):
     return data_runs
 
 
-def calibration(data, params):
+def calibration(data, params, seed=0):
     data_name = data["name"]
     calib_methods = params["calib_methods"] 
     metrics = params["metrics"]
@@ -113,8 +113,8 @@ def calibration(data, params):
     results_dict = {}
 
     # train model - hyper opt
-    rf = IR_RF(random_state=params["seed"])
-    RS = RandomizedSearchCV(rf, params["search_space"], scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=params["seed"])
+    rf = IR_RF(random_state=seed)
+    RS = RandomizedSearchCV(rf, params["search_space"], scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
     if params["oob"] == False:
         RS.fit(data["x_train"], data["y_train"])
     else:
@@ -137,7 +137,7 @@ def calibration(data, params):
             rf_best.fit(data["x_train_calib"], data["y_train_calib"])
 
     elif params["hyper_opt"] == "Manual":
-        rf_best = IR_RF(n_estimators=params["search_space"]["n_estimators"][0], max_depth=params["depth"], oob_score=params["oob"], random_state=params["seed"])
+        rf_best = IR_RF(n_estimators=params["search_space"]["n_estimators"][0], max_depth=params["depth"], oob_score=params["oob"], random_state=seed)
         if params["oob"] == False:
             rf_best.fit(data["x_train"], data["y_train"])
         else:
@@ -157,16 +157,16 @@ def calibration(data, params):
 
     # random forest probs
     if params["oob"] == False:
-        rf_p_calib = RF.predict_proba(data["x_calib"])
+        rf_p_calib = RF.predict_proba(data["x_calib"], params["laplace"])
         y_p_calib = data["y_calib"]
     else:
         rf_p_calib = RF.oob_decision_function_
         y_p_calib = data["y_train_calib"]
 
-    rf_p_test = RF.predict_proba(data["x_test"])
+    rf_p_test = RF.predict_proba(data["x_test"], params["laplace"])
     results_dict[data["name"] + "_RF_prob"] = rf_p_test
     if "CL" in metrics:
-        results_dict[data["name"] + "_RF_prob_c"] = RF.predict_proba(data["X"]) # prob c is on all X data
+        results_dict[data["name"] + "_RF_prob_c"] = RF.predict_proba(data["X"], params["laplace"]) # prob c is on all X data
     # results_dict[data["name"] + "_RF_prob_calib"] = rf_p_calib
 
 
@@ -176,7 +176,7 @@ def calibration(data, params):
 
     method = "DT"
     if method in calib_methods:
-        dt = DecisionTreeClassifier(random_state=params["seed"], max_depth=params["depth"]).fit(data["x_train"], data["y_train"])
+        dt = DecisionTreeClassifier(random_state=seed, max_depth=params["depth"]).fit(data["x_train"], data["y_train"])
         dt_p_test = dt.predict_proba(data["x_test"])
         results_dict[f"{data_name}_{method}_prob"] = dt_p_test
         if "CL" in metrics:
@@ -184,7 +184,7 @@ def calibration(data, params):
 
     method = "LR"
     if method in calib_methods:
-        lr = LogisticRegression(random_state=params["seed"]).fit(data["x_train"], data["y_train"])
+        lr = LogisticRegression(random_state=seed).fit(data["x_train"], data["y_train"])
         lr_p_test = lr.predict_proba(data["x_test"])
         results_dict[f"{data_name}_{method}_prob"] = lr_p_test
         if "CL" in metrics:
@@ -192,7 +192,7 @@ def calibration(data, params):
 
     method = "SVM"
     if method in calib_methods:
-        svm = SVC(probability=True, random_state=params["seed"]).fit(data["x_train"], data["y_train"])
+        svm = SVC(probability=True, random_state=seed).fit(data["x_train"], data["y_train"])
         svm_p_test = svm.predict_proba(data["x_test"])
         results_dict[f"{data_name}_{method}_prob"] = svm_p_test
         if "CL" in metrics:
@@ -201,11 +201,11 @@ def calibration(data, params):
     ### full data (train + calib)
     method = "RF_d"
     if method in calib_methods:
-        rf_d = IR_RF(n_estimators=params["search_space"]["n_estimators"][0], random_state=params["seed"]).fit(data["x_train_calib"], data["y_train_calib"])
-        rf_d_p_test = rf_d.predict_proba(data["x_test"])
+        rf_d = IR_RF(n_estimators=params["search_space"]["n_estimators"][0], random_state=seed).fit(data["x_train_calib"], data["y_train_calib"])
+        rf_d_p_test = rf_d.predict_proba(data["x_test"], params["laplace"])
         results_dict[f"{data_name}_{method}_prob"] = rf_d_p_test
         if "CL" in metrics:
-            results_dict[f"{data_name}_{method}_prob_c"] = rf_d.predict_proba(data["X"])
+            results_dict[f"{data_name}_{method}_prob_c"] = rf_d.predict_proba(data["X"], params["laplace"])
 
     method = "RF_opt"
     if method in calib_methods:
@@ -213,10 +213,10 @@ def calibration(data, params):
         RS.fit(data["x_train_calib"], data["y_train_calib"])
         RF_f = RS.best_estimator_
 
-        rff_p_test = RF_f.predict_proba(data["x_test"])
+        rff_p_test = RF_f.predict_proba(data["x_test"], params["laplace"])
         results_dict[f"{data_name}_{method}_prob"] = rff_p_test
         if "CL" in metrics:
-            results_dict[f"{data_name}_{method}_prob_c"] = RF_f.predict_proba(data["X"])
+            results_dict[f"{data_name}_{method}_prob_c"] = RF_f.predict_proba(data["X"], params["laplace"])
     
 
     method = "RF_large"
@@ -227,12 +227,12 @@ def calibration(data, params):
         best_rf_params['n_estimators'] = best_rf_params['n_estimators'] * params["boot_count"]
 
         rf_l = IR_RF(**best_rf_params).fit(data["x_train_calib"], data["y_train_calib"])
-        RF_large_p_test_fd = rf_l.predict_proba(data["x_test"])
+        RF_large_p_test_fd = rf_l.predict_proba(data["x_test"], params["laplace"])
 
         results_dict[f"{data_name}_{method}_prob"] = RF_large_p_test_fd
         if "CL" in metrics:
             # results_dict[f"{data_name}_{method}_prob_c"] = bc.predict_largeRF(data["X"], data["x_train_calib"], data["y_train_calib"], RF)
-            results_dict[f"{data_name}_{method}_prob_c"] = rf_l.predict_proba(data["X"])
+            results_dict[f"{data_name}_{method}_prob_c"] = rf_l.predict_proba(data["X"], params["laplace"])
 
 
     # bc = Boot_calib(boot_count=params["boot_count"])
@@ -246,10 +246,10 @@ def calibration(data, params):
 
     # method = "RF_ens_k"
     # if method in calib_methods:
-    #     RF_ens_k_p_test_fd = bc.predict_ens_params(data["x_test"], data["x_train_calib"], data["y_train_calib"], params["opt_top_K"], params["seed"])
+    #     RF_ens_k_p_test_fd = bc.predict_ens_params(data["x_test"], data["x_train_calib"], data["y_train_calib"], params["opt_top_K"], seed)
     #     results_dict[f"{data_name}_{method}_prob"] = RF_ens_k_p_test_fd
     #     if "CL" in metrics:
-    #         results_dict[f"{data_name}_{method}_prob_c"] = bc.predict_ens_params(data["X"], data["x_train_calib"], data["y_train_calib"], params["opt_top_K"], params["seed"])
+    #         results_dict[f"{data_name}_{method}_prob_c"] = bc.predict_ens_params(data["X"], data["x_train_calib"], data["y_train_calib"], params["opt_top_K"], seed)
 
     method = "Platt"
     if method in calib_methods:
@@ -348,9 +348,9 @@ def calibration(data, params):
     # RF_ens_p_calib = bc.predict_ens(data["x_calib"], data["x_train"], data["y_train"], RF)
     # RF_ens_p_c = bc.predict_ens(data["X"], data["x_train"], data["y_train"], RF)
 
-    # RF_ens_k_p_test = bc.predict_ens_params(data["x_test"], data["x_train"], data["y_train"], params["opt_top_K"], params["seed"])
-    # RF_ens_k_p_calib = bc.predict_ens_params(data["x_calib"], data["x_train"], data["y_train"], params["opt_top_K"], params["seed"])
-    # RF_ens_k_p_c = bc.predict_ens_params(data["X"], data["x_train"], data["y_train"], params["opt_top_K"], params["seed"])
+    # RF_ens_k_p_test = bc.predict_ens_params(data["x_test"], data["x_train"], data["y_train"], params["opt_top_K"], seed)
+    # RF_ens_k_p_calib = bc.predict_ens_params(data["x_calib"], data["x_train"], data["y_train"], params["opt_top_K"], seed)
+    # RF_ens_k_p_c = bc.predict_ens_params(data["X"], data["x_train"], data["y_train"], params["opt_top_K"], seed)
 
     # RF_large_p_test = bc.predict_largeRF(data["x_test"], data["x_train"], data["y_train"], RF)
     # RF_large_p_calib = bc.predict_largeRF(data["x_calib"], data["x_train"], data["y_train"], RF)
@@ -438,7 +438,7 @@ def calibration(data, params):
 
     # method = "Platt_d"
     # if method in calib_methods:
-    #     rf_d_platt = IR_RF(n_estimators=params["search_space"]["n_estimators"][0], random_state=params["seed"]).fit(data["x_train"], data["y_train"])
+    #     rf_d_platt = IR_RF(n_estimators=params["search_space"]["n_estimators"][0], random_state=seed).fit(data["x_train"], data["y_train"])
     #     rf_d_p_test = rf_d.predict_proba(data["x_test"])
     #     rf_d_p_calib = rf_d_platt.predict_proba(data["x_calib"])
     #     plat_calib = _SigmoidCalibration().fit(rf_d_p_calib[:,1], data["y_calib"])
@@ -728,7 +728,7 @@ def plot_probs(exp_data_name, probs_runs, data_runs, params, ref_plot_name="RF",
             else:
                 all_run_y = np.concatenate((all_run_y, data["y_test"]))
 
-        if params["data_name"] == "synthetic":
+        if "synthetic" in params["data_name"]:
             all_run_tp = np.zeros(1)
             for data in data_runs:
                 if len(all_run_tp) == 1:
@@ -739,7 +739,7 @@ def plot_probs(exp_data_name, probs_runs, data_runs, params, ref_plot_name="RF",
         plt.plot([0, 1], [0, 1], linestyle='--')
         colors = ['black', 'red']
         colors_mean = ['orange', 'blue']
-        if params["data_name"] == "synthetic":
+        if "synthetic" in params["data_name"]:
             plt.scatter(all_run_tp, all_run_probs[:,1], marker='.', c=[colors[c] for c in all_run_y.astype(int)]) # Calibrated probs
             plt.scatter(all_run_tp, all_run_probs_ref[:,1], marker='.', c=[colors[c] for c in all_run_y.astype(int)], alpha=0.1) # faded RF probs
         else:
@@ -765,7 +765,7 @@ def plot_probs(exp_data_name, probs_runs, data_runs, params, ref_plot_name="RF",
         # plt.scatter((bin_edges[:-1] + bin_edges[1:])/2, bin_means, label='binned statistic of data')
         # h_tce = mean_squared_error((bin_edges[:-1] + bin_edges[1:])/2, bin_means)
         # ##################
-        if params["data_name"] == "synthetic":
+        if "synthetic" in params["data_name"]:
             calib_tce = mean_squared_error(all_run_tp, all_run_probs[:,1]) # calculate TCE to add to the calib method plot
             calib_tce_ref = mean_squared_error(all_run_tp, all_run_probs_ref[:,1]) # calculate TCE to add to the calib method plot
             tce_txt = f" (TCE {calib_tce:0.5f})"
@@ -789,7 +789,7 @@ def plot_probs(exp_data_name, probs_runs, data_runs, params, ref_plot_name="RF",
         plt.ylabel("Predicted probability")
 
         # Add legend
-        if params["data_name"] == "synthetic":
+        if "synthetic" in params["data_name"]:
             red_patch = plt.plot([],[], marker='o', markersize=10, color='red', linestyle='')[0]
             black_patch = plt.plot([],[], marker='o', markersize=10, color='black', linestyle='')[0]
             calib_patch = plt.plot([],[], marker='_', markersize=15, color='blue', linestyle='')[0]
@@ -809,7 +809,7 @@ def plot_probs(exp_data_name, probs_runs, data_runs, params, ref_plot_name="RF",
 
         plt.title(params['exp_name'] + f" {exp_data_name}")
 
-        if params["data_name"] == "synthetic":
+        if "synthetic" in params["data_name"]:
             plt.savefig(f"{path}/{exp_data_name}_{method}_s.pdf", format='pdf', transparent=True)
         else:
             plt.savefig(f"{path}/{exp_data_name}_{method}.pdf", format='pdf', transparent=True)

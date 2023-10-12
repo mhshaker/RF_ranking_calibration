@@ -32,7 +32,7 @@ def run_exp(exp_key, exp_values, params):
         data_runs = load_data_runs(params, exp_data_name, params["path"]) # "../../"
 
         # for data in data_folds/randomsplits running the same dataset multiple times - res_list is a list of all the results on given metrics
-        res_list = Parallel(n_jobs=-1)(delayed(cal.calibration)(data, params) for data, params in zip(data_runs, np.repeat(params, len(data_runs))))
+        res_list = Parallel(n_jobs=-1)(delayed(cal.calibration)(data, params, seed) for data, params, seed in zip(data_runs, np.repeat(params, len(data_runs)), np.arange(len(data_runs))))
         
         for res in res_list: # res_runs is a dict of all the metrics which are a list of results of multiple runs 
             res_runs = cal.update_runs(res_runs, res) # calib results for every run for the same dataset is aggregated in res_runs (ex. acc of every run as an array)
@@ -108,7 +108,7 @@ def load_data_runs(params, exp_data_name, real_data_path="."):
 def plot_reliability_diagram(params, exp_data_name, res_runs, data_runs):
     cal.plot_probs(exp_data_name, res_runs, data_runs, params, "RF", False, True, False) 
     
-    if params["data_name"] != "synthetic":
+    if params["data_name"] != "synthetic2":
         tmp = params["data_name"]
         params["data_name"] = tmp + "ece"
         cal.plot_probs(exp_data_name, res_runs, data_runs, params, "RF", False, True, False) 

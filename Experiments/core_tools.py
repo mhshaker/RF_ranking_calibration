@@ -74,19 +74,23 @@ def save_metrics_to_csv(tables, metrics, exp_name):
     for metric in metrics:
         tables[metric+ "_std"].round(5).to_csv(f"{path}/{metric}_std.csv")
 
-def save_metrics_to_latex(tables, metrics, exp_name):
-    path = f"./results/{exp_name}/metrics"
+def save_metrics_to_latex(tables, metrics, path, sava_std=True):
+    path += "/metrics"
     if not os.path.exists(path):
         os.makedirs(path)
 
     for metric in metrics:
-        tables[metric].round(5).to_latex(f"{path}/{metric}.csv") 
+        tables[metric].round(5).to_latex(f"{path}/{metric}.txt") 
 
-    for metric in metrics:
-        tables[metric+ "_std"].round(5).to_latex(f"{path}/{metric}_std.csv")
+    if sava_std:
+        for metric in metrics:
+            tables[metric+ "_std"].round(5).to_latex(f"{path}/{metric}_std.txt")
 
 def res_statistics(tables, metrics, path):
-    path += "/statistics_wc"
+    path += "/statistics_nf"
+
+    if not os.path.exists(path):
+        os.makedirs(path)
 
     # tables = cal.mean_and_ranking_table(calib_results_dict, 
     #                                     params["metrics"],
@@ -119,15 +123,16 @@ def res_statistics(tables, metrics, path):
 
             # posthoc_res = sp.posthoc_conover_friedman(df)
 
-            # posthoc_res = sp.posthoc_nemenyi_friedman(df)
+            posthoc_res = sp.posthoc_nemenyi_friedman(df)
 
-            w_df = np.array(df.T)
-            posthoc_res = sp.posthoc_wilcoxon(w_df, p_adjust="hommel")
-            posthoc_res.columns = df.columns
-            posthoc_res = posthoc_res.set_index(df.columns)
+            # w_df = np.array(df.T)
+            # posthoc_res = sp.posthoc_wilcoxon(w_df, p_adjust="hommel")
+            # posthoc_res.columns = df.columns
+            # posthoc_res = posthoc_res.set_index(df.columns)
 
-            # sp.sign_plot(posthoc_res)
-            # plt.show()
+            sp.sign_plot(posthoc_res)
+            plt.savefig(f"{path}/sign_plot_{metric}.pdf", format='pdf', transparent=True)
+            plt.close() 
 
             plt.figure(figsize=(10, 4), dpi=100)
             plt.title(f"Critical difference diagram of average score ranks ({metric})")    
