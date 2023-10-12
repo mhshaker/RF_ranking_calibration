@@ -1,22 +1,14 @@
-import Data.data_provider as dp 
-import pandas as pd
+import numpy as np
 
-X, y = dp.load_data("kc2", ".")
-print("shape X", y.shape)
+# Create a sample NumPy array
+arr = np.array([1, 2, 3, 4, 5])
 
+# Shift the elements to the right by 2 positions
+shifted_right = np.concatenate((arr[-2:], arr[:-2]))
 
-# Sample DataFrame with categorical features
-data = {
-    'Color': ['Red', 'Blue', 'Green', 'Red', 'Blue'],
-    'Size': ['Small', 'Medium', 'Large', 'Medium', 'Small']
-}
+# Shift the elements to the left by 2 positions
+shifted_left = np.concatenate((arr[2:], arr[:2]))
 
-df = pd.DataFrame(X)
-print(df.head())
-
-# # Perform one-hot encoding on categorical columns
-# categorical_columns = ['Color', 'Size']
-# df_encoded = pd.get_dummies(df, columns=categorical_columns)
-
-# # The resulting DataFrame df_encoded will have one-hot encoded columns
-# print(df_encoded)
+print("Original array:", arr)
+print("Shifted right by 2:", shifted_right)
+print("Shifted left by 2:", shifted_left)
