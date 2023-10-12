@@ -31,6 +31,16 @@ def run_exp(exp_key, exp_values, params):
         # load data for different runs
         data_runs = load_data_runs(params, exp_data_name, params["path"]) # "../../"
 
+        # to change the calib set size (only for calib size experiment)
+        if exp_key == "calib_size":
+            for data in data_runs:    
+                calib_size = int(params["calib_size"] / 100 * len(data["x_calib"]))
+                for start_index in range(len(data["x_calib"]) - calib_size): # the for is to find a subset of calib data such that it contains all the class lables
+                    if len(np.unique(data["y_calib"][start_index : start_index+calib_size])) > 1: 
+                        data["x_calib"] = data["x_calib"][start_index : start_index+calib_size]
+                        data["y_calib"] = data["y_calib"][start_index : start_index+calib_size]
+                        break
+                # print(f"data size train {len(data['x_train'])} test {len(data['x_test'])} calib {len(data['x_calib'])}")
         # for data in data_folds/randomsplits running the same dataset multiple times - res_list is a list of all the results on given metrics
         res_list = Parallel(n_jobs=-1)(delayed(cal.calibration)(data, params, seed) for data, params, seed in zip(data_runs, np.repeat(params, len(data_runs)), np.arange(len(data_runs))))
         
