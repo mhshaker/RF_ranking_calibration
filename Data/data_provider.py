@@ -195,38 +195,51 @@ def make_classification_gaussian_with_true_prob(n_samples,
 						class2_mean_max=1, 
 						class2_cov_min=1, 
 						class2_cov_max=2, 
-						seed=0):
+						seed=0,
+						bais_accuracy= 0.76):
 	n_samples = int(n_samples / 2)
 	# Synthetic data with n_features dimentions and n_classes classes
 
 	np.random.seed(seed)
 
-	mean1 = np.random.uniform(class1_mean_min, class1_mean_max, n_features) #[0, 2, 3, -1, 9]
-	cov1 = np.zeros((n_features,n_features))
-	np.fill_diagonal(cov1, np.random.uniform(class1_cov_min,class1_cov_max,n_features))
+	for x in np.arange(0, 0.5, 0.001):
 
-	mean2 = np.random.uniform(class2_mean_min, class2_mean_max,n_features) # [-1, 3, 0, 2, 3]
-	cov2 = np.zeros((n_features,n_features))
-	np.fill_diagonal(cov2, np.random.uniform(class2_cov_min,class2_cov_max,n_features))
+		mean1 = np.random.uniform(class1_mean_min + x, class1_mean_max + x, n_features) #[0, 2, 3, -1, 9]
+		cov1 = np.zeros((n_features,n_features))
+		np.fill_diagonal(cov1, np.random.uniform(class1_cov_min,class1_cov_max,n_features))
 
-	x1 = np.random.multivariate_normal(mean1, cov1, n_samples)
-	x2 = np.random.multivariate_normal(mean2, cov2, n_samples)
+		mean2 = np.random.uniform(class2_mean_min - x, class2_mean_max - x,n_features) # [-1, 3, 0, 2, 3]
+		cov2 = np.zeros((n_features,n_features))
+		np.fill_diagonal(cov2, np.random.uniform(class2_cov_min,class2_cov_max,n_features))
 
-	X = np.concatenate([x1, x2])
-	true_prob = multivariate_normal.pdf(X, mean2, cov2) * 0.5 / (0.5 * multivariate_normal.pdf(X, mean1, cov1) + 0.5 * multivariate_normal.pdf(X, mean2, cov2))
-	y = np.concatenate([np.zeros(len(x1)), np.ones(len(x2))])
+		x1 = np.random.multivariate_normal(mean1, cov1, n_samples)
+		x2 = np.random.multivariate_normal(mean2, cov2, n_samples)
 
-	# this is to create some noise in the data based on the number of features to keep ACC the same
-	# y = np.concatenate((y[-int(30*math.log(n_features)):], y[:-int(30*math.log(n_features))])) # log method
-	for x in range(1, 300):
-		y_shift = np.concatenate((y[-x:], y[:-x]))
-		x_train, x_test, y_train, y_test = train_test_split(X, y_shift, test_size=0.2, shuffle=True, random_state=seed)
+		X = np.concatenate([x1, x2])
+		true_prob = multivariate_normal.pdf(X, mean2, cov2) * 0.5 / (0.5 * multivariate_normal.pdf(X, mean1, cov1) + 0.5 * multivariate_normal.pdf(X, mean2, cov2))
+		y = np.concatenate([np.zeros(len(x1)), np.ones(len(x2))])
+
+		x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True, random_state=seed)
 		clf = RandomForestClassifier(n_estimators=10)  
 		clf.fit(x_train, y_train)
 		accuracy = clf.score(x_test, y_test)
-		if accuracy < 0.76:
+		if accuracy < bais_accuracy and accuracy > bais_accuracy - 0.01:
+			print(f"Success in {n_features} n_features")
 			break
-	y = y_shift
+
+	# this is to create some noise in the data based on the number of features to keep ACC the same
+	# y = np.concatenate((y[-int(30*math.log(n_features)):], y[:-int(30*math.log(n_features))])) # log method
+
+	# train RF and calculate ACC method
+	# for x in range(1, 300):
+	# 	y_shift = np.concatenate((y[-x:], y[:-x]))
+	# 	x_train, x_test, y_train, y_test = train_test_split(X, y_shift, test_size=0.2, shuffle=True, random_state=seed)
+	# 	clf = RandomForestClassifier(n_estimators=10)  
+	# 	clf.fit(x_train, y_train)
+	# 	accuracy = clf.score(x_test, y_test)
+	# 	if accuracy < bais_accuracy:
+	# 		break
+	# y = y_shift
 
 	# tp = np.concatenate([x1_pdf_dif, x2_pdf_dif])
 
