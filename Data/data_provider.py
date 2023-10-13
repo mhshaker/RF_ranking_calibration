@@ -12,6 +12,8 @@ from scipy.io import arff
 from sklearn.datasets import make_blobs
 from sklearn.linear_model import LogisticRegression
 from sklearn.datasets import make_classification
+import math
+from sklearn.ensemble import RandomForestClassifier
 
 
 def unpickle(file): # for reading the CIFAR dataset
@@ -213,6 +215,19 @@ def make_classification_gaussian_with_true_prob(n_samples,
 	X = np.concatenate([x1, x2])
 	true_prob = multivariate_normal.pdf(X, mean2, cov2) * 0.5 / (0.5 * multivariate_normal.pdf(X, mean1, cov1) + 0.5 * multivariate_normal.pdf(X, mean2, cov2))
 	y = np.concatenate([np.zeros(len(x1)), np.ones(len(x2))])
+
+	# this is to create some noise in the data based on the number of features to keep ACC the same
+	# y = np.concatenate((y[-int(30*math.log(n_features)):], y[:-int(30*math.log(n_features))])) # log method
+	for x in range(1, 300):
+		y_shift = np.concatenate((y[-x:], y[:-x]))
+		x_train, x_test, y_train, y_test = train_test_split(X, y_shift, test_size=0.2, shuffle=True, random_state=seed)
+		clf = RandomForestClassifier(n_estimators=10)  
+		clf.fit(x_train, y_train)
+		accuracy = clf.score(x_test, y_test)
+		if accuracy < 0.76:
+			break
+	y = y_shift
+
 	# tp = np.concatenate([x1_pdf_dif, x2_pdf_dif])
 
 	return X, y, true_prob
