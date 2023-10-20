@@ -340,6 +340,14 @@ def calibration(data, params, seed=0):
         rf_lap_test = RF.predict_proba(data["x_test"], laplace=1)
         results_dict[f"{data_name}_{method}_prob"] = rf_lap_test
 
+    # Elkan calibration
+    method = "Elkan"
+    if method in calib_methods:
+        elkan_calib = Elkan_calib().fit(data["y_train"], data["y_calib"])
+        elkan_p_test = elkan_calib.predict(rf_p_test[:,1])
+        results_dict[f"{data_name}_{method}_prob"] = elkan_p_test
+        results_dict[f"{data_name}_{method}_fit"] = elkan_calib.predict(tvec)[:,1]
+
 
     # results_dict[data["name"] + "_RF_prob_train"] = RF.predict_proba(data["x_train"])
 
@@ -454,13 +462,6 @@ def calibration(data, params, seed=0):
     #     results_dict[f"{data_name}_{method}_prob"] = ven_p_test
     #     results_dict[f"{data_name}_{method}_fit"] = ven_calib.predict(convert_prob_2D(tvec))[:,1]
 
-    # # Elkan calibration
-    # method = "Elkan"
-    # if method in calib_methods:
-    #     elkan_calib = Elkan_calib().fit(data["y_train"], data["y_calib"])
-    #     elkan_p_test = elkan_calib.predict(rf_p_test[:,1])
-    #     results_dict[f"{data_name}_{method}_prob"] = elkan_p_test
-    #     results_dict[f"{data_name}_{method}_fit"] = elkan_calib.predict(tvec)[:,1]
 
     # method = "true"
     # if method in calib_methods:
