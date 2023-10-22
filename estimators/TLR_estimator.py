@@ -2,6 +2,7 @@ import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
 from old.CalibrationM import convert_prob_2D
 from sklearn.linear_model import LogisticRegression
+from sklearn.calibration import CalibratedClassifierCV
 from estimators.LR_estimator import LR_u as lr
 
 class treeLR_calib(BaseEstimator, ClassifierMixin):
@@ -29,6 +30,9 @@ class treeLR_calib(BaseEstimator, ClassifierMixin):
 
 
     def fit(self, RF, x_train, y_train, x_calib, y_calib):
+
+        #print("len train", len(x_train))
+        #print("len calib", len(x_calib))
         
         self.RF = RF
         self.lr_list = []
@@ -40,10 +44,29 @@ class treeLR_calib(BaseEstimator, ClassifierMixin):
             lr_x_calib, _, _ = self.convert_data_to_lr(estimator, x_calib)
             self.tree_leaf_list.append(leafs)
             self.ref_index.append(ref)
-            # train LR with training data
-            tlr = lr(random_state=0).fit(lr_x_train, y_train)
-            # retrain alpha with calib data
-            tlr = tlr.update_intercept(lr_x_calib, y_calib)
+
+            # same as paper - update the interval using calib data
+
+            # Masud code
+            # # train LR with training data
+            # tlr = lr(random_state=0).fit(lr_x_train, y_train)
+            # # retrain alpha with calib data
+            # print("before intercept ", tlr.intercept_)
+            # tlr = tlr.update_intercept(lr_x_calib, y_calib)
+            # print("after intercept ", tlr.intercept_)
+
+
+            # updata using CalibratedClassifierCV code
+            # # Step 1: Train a Logistic Regression model on the training dataset
+            # model = LogisticRegression()
+            # model.fit(lr_x_train, y_train)
+            # # Step 2: Create a calibrated classifier using the calibration dataset
+            # tlr = CalibratedClassifierCV(base_estimator=model, method='isotonic', cv='prefit')
+            # tlr.fit(lr_x_calib, y_calib)
+
+            # my way = train the LR using calib data
+            tlr = lr(random_state=0).fit(lr_x_calib, y_calib)
+
             self.lr_list.append(tlr)
 
         return self

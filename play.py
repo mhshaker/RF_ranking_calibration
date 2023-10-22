@@ -1,30 +1,18 @@
-import scipy.stats as stats
+import matplotlib.pyplot as plt
 
-observed_successes = 17  # The number of observed successes
-expected_successes = 10   # The expected number of successes under the null hypothesis
-n = 20                    # The total number of trials
+# Sample data
+x = [1, 2, 3, 4, 5]
+y = [10, 20, 30, 40, 500]
 
-# Calculate the probability of observing a value less than or equal to observed_successes
-p_value_lower = stats.binom.cdf(observed_successes, n, 0.5)
+# Create a plot
+plt.plot(x, y)
 
-# Calculate the probability of observing a value greater than or equal to observed_successes
-p_value_upper = 1 - stats.binom.cdf(observed_successes - 1, n, 0.5)
+# Set the maximum value on the y-axis
+plt.ylim(0, 60)  # Adjust the values according to your needs
 
-# Combine the two-tailed p-values
-p_value = 2 * min(p_value_lower, p_value_upper)
+# Label the axes
+plt.xlabel('X-axis')
+plt.ylabel('Y-axis')
 
-alpha = 0.05
-print("p_value", p_value)
-
-if p_value < alpha:
-    print("Reject the null hypothesis. The observed frequency is significantly different from the expected frequency.")
-else:
-    print("Fail to reject the null hypothesis. There is no significant difference.")
-
-
-result = stats.binomtest(observed_successes, n=n, p=0.5, alternative='two-sided')
-print("p_value", result.pvalue)
-if p_value < alpha:
-    print("Reject the null hypothesis. The observed frequency is significantly different from the expected frequency.")
-else:
-    print("Fail to reject the null hypothesis. There is no significant difference.")
+# Show the plot
+plt.show()
