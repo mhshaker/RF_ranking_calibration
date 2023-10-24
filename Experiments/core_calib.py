@@ -120,28 +120,28 @@ def calibration(data, params, seed=0):
     else:
         RS.fit(data["x_train_calib"], data["y_train_calib"])
 
-    rf_best = RS.best_estimator_
+    # rf_best = RS.best_estimator_
 
-    opt_params = np.array(RS.cv_results_['params'])
-    opt_rankings = np.array(RS.cv_results_['rank_test_neg_brier_score'])
+    # opt_params = np.array(RS.cv_results_['params'])
+    # opt_rankings = np.array(RS.cv_results_['rank_test_neg_brier_score'])
 
-    sorted_indices = np.argsort(opt_rankings, kind="stable")
-    opt_params = opt_params[sorted_indices]
-    params["opt_top_K"] = opt_params[:params["opt_top_K"]] # save the top K best performing RF params in opt_top_K
+    # sorted_indices = np.argsort(opt_rankings, kind="stable")
+    # opt_params = opt_params[sorted_indices]
+    # params["opt_top_K"] = opt_params[:params["opt_top_K"]] # save the top K best performing RF params in opt_top_K
 
-    if params["hyper_opt"] == "Default":
-        rf_best = rf
-        if params["oob"] == False:
-            rf_best.fit(data["x_train"], data["y_train"])
-        else:
-            rf_best.fit(data["x_train_calib"], data["y_train_calib"])
+    # if params["hyper_opt"] == "Default":
+    #     rf_best = rf
+    #     if params["oob"] == False:
+    #         rf_best.fit(data["x_train"], data["y_train"])
+    #     else:
+    #         rf_best.fit(data["x_train_calib"], data["y_train_calib"])
 
-    elif params["hyper_opt"] == "Manual":
-        rf_best = IR_RF(n_estimators=params["search_space"]["n_estimators"][0], max_depth=params["depth"], oob_score=params["oob"], random_state=seed)
-        if params["oob"] == False:
-            rf_best.fit(data["x_train"], data["y_train"])
-        else:
-            rf_best.fit(data["x_train_calib"], data["y_train_calib"])
+    # elif params["hyper_opt"] == "Manual":
+    #     rf_best = IR_RF(n_estimators=params["search_space"]["n_estimators"][0], max_depth=params["depth"], oob_score=params["oob"], random_state=seed)
+    #     if params["oob"] == False:
+    #         rf_best.fit(data["x_train"], data["y_train"])
+    #     else:
+    #         rf_best.fit(data["x_train_calib"], data["y_train_calib"])
 
     # check_dummy=True
     # if check_dummy:
@@ -153,9 +153,10 @@ def calibration(data, params, seed=0):
     #     if l_dif <= 1:
     #         print(f">>>>>>> data {data['name']} NOT LEARNING - learnign diff is {l_dif}")
 
-    RF = rf_best
+    # RF = rf_best
+    RF = RS.best_estimator_
 
-    # random forest probs
+    # get main random forest calibration probs
     if params["oob"] == False:
         rf_p_calib = RF.predict_proba(data["x_calib"], params["laplace"])
         y_p_calib = data["y_calib"]
@@ -163,7 +164,9 @@ def calibration(data, params, seed=0):
         rf_p_calib = RF.oob_decision_function_
         y_p_calib = data["y_train_calib"]
 
+    # get test probs from main RF - to later be used as input for calibration methods to predict
     rf_p_test = RF.predict_proba(data["x_test"], params["laplace"])
+
     results_dict[data["name"] + "_RF_prob"] = rf_p_test
     if "CL" in metrics:
         results_dict[data["name"] + "_RF_prob_c"] = RF.predict_proba(data["X"], params["laplace"]) # prob c is on all X data
@@ -211,22 +214,23 @@ def calibration(data, params, seed=0):
     if method in calib_methods:
         # train model - hyper opt with x_train_calib
         RS.fit(data["x_train_calib"], data["y_train_calib"])
-        RF_f = RS.best_estimator_
+        RF_opt = RS.best_estimator_
 
-        rff_p_test = RF_f.predict_proba(data["x_test"], params["laplace"])
+        rff_p_test = RF_opt.predict_proba(data["x_test"], params["laplace"])
         results_dict[f"{data_name}_{method}_prob"] = rff_p_test
         if "CL" in metrics:
-            results_dict[f"{data_name}_{method}_prob_c"] = RF_f.predict_proba(data["X"], params["laplace"])
+            results_dict[f"{data_name}_{method}_prob_c"] = RF_opt.predict_proba(data["X"], params["laplace"])
     
 
     method = "RF_large"
     if method in calib_methods:
         # RF_large_p_test_fd = bc.predict_largeRF(data["x_test"], data["x_train_calib"], data["y_train_calib"], RF)
 
-        best_rf_params = RF.get_params().copy()
-        best_rf_params['n_estimators'] = best_rf_params['n_estimators'] * params["boot_count"]
+        # best_rf_params = RF.get_params().copy()
+        # best_rf_params['n_estimators'] = best_rf_params['n_estimators'] * params["boot_count"]
 
-        rf_l = IR_RF(**best_rf_params).fit(data["x_train_calib"], data["y_train_calib"])
+        rf_l = IR_RF(n_estimators=params["search_space"]["n_estimators"][0]* params["boot_count"], random_state=seed).fit(data["x_train_calib"], data["y_train_calib"])
+        # rf_l = IR_RF(**best_rf_params).fit(data["x_train_calib"], data["y_train_calib"])
         RF_large_p_test_fd = rf_l.predict_proba(data["x_test"], params["laplace"])
 
         results_dict[f"{data_name}_{method}_prob"] = RF_large_p_test_fd
@@ -311,6 +315,14 @@ def calibration(data, params, seed=0):
         if "CL" in metrics:
             results_dict[f"{data_name}_{method}_prob_c"] = tlr_calib.predict(data["X"])
 
+    # Elkan calibration
+    method = "Elkan"
+    if method in calib_methods:
+        elkan_calib = Elkan_calib().fit(data["y_train"], data["y_calib"])
+        elkan_p_test = elkan_calib.predict(rf_p_test[:,1])
+        results_dict[f"{data_name}_{method}_prob"] = elkan_p_test
+        results_dict[f"{data_name}_{method}_fit"] = elkan_calib.predict(tvec)[:,1]
+
     # RF ranking + ISO
     method = "Rank"
     if method in calib_methods:
@@ -340,13 +352,6 @@ def calibration(data, params, seed=0):
         rf_lap_test = RF.predict_proba(data["x_test"], laplace=1)
         results_dict[f"{data_name}_{method}_prob"] = rf_lap_test
 
-    # Elkan calibration
-    method = "Elkan"
-    if method in calib_methods:
-        elkan_calib = Elkan_calib().fit(data["y_train"], data["y_calib"])
-        elkan_p_test = elkan_calib.predict(rf_p_test[:,1])
-        results_dict[f"{data_name}_{method}_prob"] = elkan_p_test
-        results_dict[f"{data_name}_{method}_fit"] = elkan_calib.predict(tvec)[:,1]
 
 
     # results_dict[data["name"] + "_RF_prob_train"] = RF.predict_proba(data["x_train"])
