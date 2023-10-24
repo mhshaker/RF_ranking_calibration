@@ -48,15 +48,15 @@ class treeLR_calib(BaseEstimator, ClassifierMixin):
             # same as paper - update the interval using calib data
 
             # Masud code
-            # # train LR with training data
-            # tlr = lr(random_state=0).fit(lr_x_train, y_train)
-            # # retrain alpha with calib data
+            # train LR with training data
+            tlr = lr(random_state=0).fit(lr_x_train, y_train)
+            # retrain alpha with calib data
             # print("before intercept ", tlr.intercept_)
-            # tlr = tlr.update_intercept(lr_x_calib, y_calib)
+            tlr = tlr.update_intercept(lr_x_calib, y_calib)
             # print("after intercept ", tlr.intercept_)
 
 
-            # updata using CalibratedClassifierCV code
+            # # updata using CalibratedClassifierCV code
             # # Step 1: Train a Logistic Regression model on the training dataset
             # model = LogisticRegression()
             # model.fit(lr_x_train, y_train)
@@ -65,7 +65,7 @@ class treeLR_calib(BaseEstimator, ClassifierMixin):
             # tlr.fit(lr_x_calib, y_calib)
 
             # my way = train the LR using calib data
-            tlr = lr(random_state=0).fit(lr_x_calib, y_calib)
+            # tlr = lr(random_state=0).fit(lr_x_calib, y_calib)
 
             self.lr_list.append(tlr)
 
