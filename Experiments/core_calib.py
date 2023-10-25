@@ -37,6 +37,7 @@ from sklearn.model_selection import RandomizedSearchCV
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC
+from sklearn.neural_network import MLPClassifier
 
 tvec = np.linspace(0.01, 0.99, 990)
 
@@ -179,27 +180,95 @@ def calibration(data, params, seed=0):
 
     method = "DT"
     if method in calib_methods:
-        dt = DecisionTreeClassifier(random_state=seed, max_depth=params["depth"]).fit(data["x_train"], data["y_train"])
+        search_space_dt = {
+                "criterion": ["gini", "entropy", "log_loss"],
+                "splitter": ['best', 'random'],
+                "max_depth": np.arange(2, 100).tolist(),
+                "min_samples_split": np.arange(2, 11).tolist(),
+                "min_samples_leaf": np.arange(1, 11).tolist(),
+                "max_features": ['sqrt', 'log2', None],
+                }
+        dt = DecisionTreeClassifier(random_state=seed)
+        RS_dt = RandomizedSearchCV(dt, search_space_dt, scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
+        RS_dt.fit(data["x_train_calib"], data["y_train_calib"])
+        dt = RS_dt.best_estimator_
+        
         dt_p_test = dt.predict_proba(data["x_test"])
         results_dict[f"{data_name}_{method}_prob"] = dt_p_test
+        
         if "CL" in metrics:
             results_dict[f"{data_name}_{method}_prob_c"] = dt.predict_proba(data["X"])
 
     method = "LR"
     if method in calib_methods:
-        lr = LogisticRegression(random_state=seed).fit(data["x_train"], data["y_train"])
+        search_space_lr = {
+                "penalty": ['l2', None],
+                "C": [0.001, 1, 10, 100],
+                "solver": ['newton-cholesky', 'newton-cg', 'lbfgs', 'sag', 'saga'],
+                "max_iter":  [100, 500, 1000],
+                "intercept_scaling": [0.1, 1, 10],
+                }
+        lr = LogisticRegression(random_state=seed)
+        RS_lr = RandomizedSearchCV(lr, search_space_lr, scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
+        RS_lr.fit(data["x_train_calib"], data["y_train_calib"])
+        lr = RS_lr.best_estimator_
+        
         lr_p_test = lr.predict_proba(data["x_test"])
         results_dict[f"{data_name}_{method}_prob"] = lr_p_test
+        
         if "CL" in metrics:
             results_dict[f"{data_name}_{method}_prob_c"] = lr.predict_proba(data["X"])
 
     method = "SVM"
     if method in calib_methods:
-        svm = SVC(probability=True, random_state=seed).fit(data["x_train"], data["y_train"])
+        search_space_svm = {
+                'kernel': ['linear', 'poly', 'rbf', 'sigmoid'],
+                'C': [0.1, 1, 10, 100],
+                'degree': [2, 3, 4],
+                'gamma': ['scale', 'auto', [0.1, 1, 10]],
+                'coef0': [0, 1, 2],
+                'shrinking': [True, False],
+                'class_weight': [None, 'balanced'],
+                'max_iter': [1000, 5000, 10000],
+                # 'random_seed': list(range(101)),
+                'decision_function_shape': ['ovo', 'ovr'],
+                'tol': [1e-4, 1e-3, 1e-2],
+                'probability': [True]
+            }
+
+        svm = SVC(random_state=seed)
+        RS_svm = RandomizedSearchCV(svm, search_space_svm, scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
+        RS_svm.fit(data["x_train_calib"], data["y_train_calib"])
+        svm = RS_svm.best_estimator_
+
         svm_p_test = svm.predict_proba(data["x_test"])
         results_dict[f"{data_name}_{method}_prob"] = svm_p_test
+        
         if "CL" in metrics:
             results_dict[f"{data_name}_{method}_prob_c"] = svm.predict_proba(data["X"])
+
+    method = "NN"
+    if method in calib_methods:
+        search_space_nn = {
+            'hidden_layer_sizes': [(50, 50), (100, 100), (100, 50, 25)],
+            'activation': ['relu', 'tanh'],
+            'solver': ['adam', 'sgd'],
+            'alpha': [0.0001, 0.001, 0.01],
+            'learning_rate': ['constant', 'invscaling', 'adaptive'],
+            'max_iter': [200, 300, 500],
+        }
+
+        nn = MLPClassifier(random_state=seed)
+        RS_nn = RandomizedSearchCV(nn, search_space_nn, scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
+        RS_nn.fit(data["x_train_calib"], data["y_train_calib"])
+        nn = RS_nn.best_estimator_
+
+        nn_p_test = nn.predict_proba(data["x_test"])
+        results_dict[f"{data_name}_{method}_prob"] = nn_p_test
+        
+        if "CL" in metrics:
+            results_dict[f"{data_name}_{method}_prob_c"] = nn.predict_proba(data["X"])
+
 
     ### full data (train + calib)
     method = "RF_d"
