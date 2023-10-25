@@ -6,7 +6,10 @@ from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import RandomizedSearchCV
 import Data.data_provider as dp
+import time
 
+
+st = time.time()
 # Load a sample dataset (e.g., the Iris dataset)
 X, y = dp.load_data("datatrieve", './')
 print("len x", len(X))
@@ -40,3 +43,7 @@ gp_classifier.fit(X_train, y_train)
 best_model = gp_classifier
 accuracy = best_model.score(X_test, y_test)
 print("Test accuracy:", accuracy)
+
+et = time.time() - st
+
+print("run time", et)
