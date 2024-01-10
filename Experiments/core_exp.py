@@ -22,6 +22,8 @@ def run_exp(exp_key, exp_values, params):
     
     for exp_param in exp_values: 
         params[exp_key] = exp_param
+        if exp_key == "n_estimators" or exp_key == "max_depth":
+            params["search_space"][exp_key] = [exp_param]
         # Data
         exp_data_name = str(exp_param) # data_name + "_" + 
         data_list.append(exp_data_name)
@@ -84,6 +86,9 @@ def load_data_runs(params, exp_data_name, real_data_path="."):
                         shuffle=True, 
                         random_state=params["seed"])
             X, y, tp = dp.x_y_q(X_temp, n_copy = params["n_copy"], seed = params["seed"])
+
+        elif params["data_name"] == "synthetic3":
+            X, y, tp = dp.make_classification_with_true_prob_3(params["data_size"], params["n_features"])
 
         if params["plot_data"]:
             colors = ['black', 'red']
