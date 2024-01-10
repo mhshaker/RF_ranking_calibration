@@ -40,9 +40,20 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC
 from sklearn.neural_network import MLPClassifier
 from sklearn.naive_bayes import GaussianNB
+import scipy
+from sklearn.metrics import mutual_info_score
 
 tvec = np.linspace(0.01, 0.99, 990)
 
+def kl_divergence(p, q,epsilon=1e-10):
+    """
+    Calculate KL divergence between two arrays of probability distributions.
+    """
+    p = np.clip(p, epsilon, 1 - epsilon)
+    q = np.clip(q, epsilon, 1 - epsilon)
+    
+    kl_values = np.sum(np.where(p != 0, p * np.log(p / q), 0), axis=1)
+    return np.mean(kl_values)
 
 def split_train_calib_test(name, X, y, test_size, calib_size, runs=1, tp=np.full(10,-1)):
     ### spliting data to train calib and test
@@ -667,7 +678,12 @@ def calibration(data, params, seed=0):
 
     if "tce" in metrics:
         for method in calib_methods:
-            results_dict[f"{data_name}_{method}_tce"] = mean_squared_error(data["tp_test"], results_dict[f"{data_name}_{method}_prob"][:,1])
+            # results_dict[f"{data_name}_{method}_tce"] = mean_squared_error(data["tp_test"], results_dict[f"{data_name}_{method}_prob"][:,1]) # mean squared error for TCE
+            true_prob_ = np.concatenate((data["tp_test"].reshape(-1,1), (1-data["tp_test"]).reshape(-1,1)), axis=1)
+            pred_prob_ = np.concatenate((results_dict[f"{data_name}_{method}_prob"][:,1].reshape(-1,1), (1-results_dict[f"{data_name}_{method}_prob"][:,1]).reshape(-1,1)), axis=1)
+            # kl_divergence_value = (scipy.special.kl_div(true_prob_, pred_prob_)).mean() # TCE is the KL divergence     
+            results_dict[f"{data_name}_{method}_tce"] = kl_divergence(true_prob_, pred_prob_)  # TCE is the KL divergence with epsilon to avoid inf problem       
+
 
     if "BS" in metrics:
 
