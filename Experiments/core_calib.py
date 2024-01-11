@@ -238,6 +238,20 @@ def calibration(data, params, seed=0):
         if "CL" in metrics:
             results_dict[f"{data_name}_{method}_prob_c"] = lr.predict_proba(data["X"])
 
+    method = "LR_d"
+    if method in calib_methods:
+        time_lr_opt_s = time.time()
+        lr = LogisticRegression(random_state=seed)
+        lr.fit(data["x_train_calib"], data["y_train_calib"])
+        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_lr_opt_s
+        
+        lr_p_test = lr.predict_proba(data["x_test"])
+        results_dict[f"{data_name}_{method}_prob"] = lr_p_test
+        
+        if "CL" in metrics:
+            results_dict[f"{data_name}_{method}_prob_c"] = lr.predict_proba(data["X"])
+
+
     method = "SVM"
     if method in calib_methods:
         time_svm_opt_s = time.time()
@@ -262,6 +276,19 @@ def calibration(data, params, seed=0):
         svm = RS_svm.best_estimator_
         results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_svm_opt_s
 
+        svm_p_test = svm.predict_proba(data["x_test"])
+        results_dict[f"{data_name}_{method}_prob"] = svm_p_test
+        
+        if "CL" in metrics:
+            results_dict[f"{data_name}_{method}_prob_c"] = svm.predict_proba(data["X"])
+
+    method = "SVM_d"
+    if method in calib_methods:
+        time_svm_opt_s = time.time()
+
+        svm = SVC(random_state=seed, probability=True)
+        svm.fit(data["x_train_calib"], data["y_train_calib"])
+        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_svm_opt_s
         svm_p_test = svm.predict_proba(data["x_test"])
         results_dict[f"{data_name}_{method}_prob"] = svm_p_test
         
