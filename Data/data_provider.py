@@ -14,7 +14,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.datasets import make_classification
 import math
 from sklearn.ensemble import RandomForestClassifier
-
+from sklearn.naive_bayes import GaussianNB
+from scipy.stats import multivariate_normal
 
 def unpickle(file): # for reading the CIFAR dataset
     import pickle
@@ -143,7 +144,6 @@ def load_arff_2(data_name):
 
 	return np.array(features), np.array(target)
 
-from scipy.stats import multivariate_normal
 
 def x_y_q(X, n_copy=50, seed=0): # create true probability with repeating X instances n_copy times with different labels assigned by a random choice with prob p drawn from uniform dirstribution
 	np.random.seed(seed)
@@ -196,7 +196,7 @@ def make_classification_gaussian_with_true_prob(n_samples,
 						class2_cov_min=1, 
 						class2_cov_max=2, 
 						seed=0,
-						bais_accuracy= 0.76):
+						bais_accuracy= 0): #0.76 only for #features exp
 	n_samples = int(n_samples / 2)
 	# Synthetic data with n_features dimentions and n_classes classes
 
@@ -204,7 +204,7 @@ def make_classification_gaussian_with_true_prob(n_samples,
 
 	for x in np.arange(0, 0.5, 0.001):
 
-		mean1 = np.random.uniform(class1_mean_min + x, class1_mean_max + x, n_features) #[0, 2, 3, -1, 9]
+		mean1 = np.random.uniform(class1_mean_min + x, class1_mean_max + x, n_features) # [0, 2, 3, -1, 9]
 		cov1 = np.zeros((n_features,n_features))
 		np.fill_diagonal(cov1, np.random.uniform(class1_cov_min,class1_cov_max,n_features))
 
@@ -220,11 +220,13 @@ def make_classification_gaussian_with_true_prob(n_samples,
 		y = np.concatenate([np.zeros(len(x1)), np.ones(len(x2))])
 
 		x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True, random_state=seed)
-		clf = RandomForestClassifier(n_estimators=10)  
+		clf = RandomForestClassifier(n_estimators=100)  
+		# clf = GaussianNB()
+
 		clf.fit(x_train, y_train)
 		accuracy = clf.score(x_test, y_test)
-		if accuracy < bais_accuracy and accuracy > bais_accuracy - 0.01:
-			print(f"Success in {n_features} n_features")
+		if accuracy < bais_accuracy and accuracy > bais_accuracy - 0.01 or bais_accuracy==0:
+			# print(f"Success in {n_features} n_features")
 			break
 
 	# this is to create some noise in the data based on the number of features to keep ACC the same
@@ -286,3 +288,22 @@ def make_classification_with_true_prob_logestic(n_samples, n_features, mean_true
 	# true_prob = 1/(1 + np.exp(-logit))
 
 	return X, y, true_prob 
+
+def make_classification_with_true_prob_3(n_samples, n_features, seed=0):
+	# Set random seed for reproducibility
+	np.random.seed(seed)
+
+	# Generate synthetic dataset
+	# X, Y = make_classification(n_samples=n_samples, n_features=n_features, random_state=seed)
+	X, Y = make_classification(n_samples=1000, n_features=5, n_informative=2, n_redundant=2, n_clusters_per_class=1, random_state=42)
+
+	# Generate true probabilities for each instance
+
+	weights = np.random.rand(X.shape[1])
+	bias = np.random.rand()
+	linear_combination = np.dot(X, weights) + bias
+	# Normalize to [0, 1] using sigmoid function
+	true_probabilities = 1 / (1 + np.exp(-linear_combination))
+
+
+	return X, Y, true_probabilities 
