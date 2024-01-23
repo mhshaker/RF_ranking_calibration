@@ -201,14 +201,17 @@ def make_classification_gaussian_with_true_prob(n_samples,
 	# Synthetic data with n_features dimentions and n_classes classes
 
 	np.random.seed(seed)
+	x_pre = [0,5179,6570,560,1608,238,410,70,375,138,263,97,107,22,6,21,2,9,0,75,28,3,12,6,13,33,63,24,6,20,2,20,42,0,8,111,0,38,3,9,4,92,17,21,57,39,10,17]
+	for x in np.arange(-1, 200, 1):
+		if x == -1:
+			x = x_pre[n_features-50]
 
-	for x in np.arange(0, 0.5, 0.001):
-
-		mean1 = np.random.uniform(class1_mean_min + x, class1_mean_max + x, n_features) # [0, 2, 3, -1, 9]
+		np.random.seed(x)
+		mean1 = np.random.uniform(class1_mean_min, class1_mean_max, n_features) # [0, 2, 3, -1, 9]
 		cov1 = np.zeros((n_features,n_features))
 		np.fill_diagonal(cov1, np.random.uniform(class1_cov_min,class1_cov_max,n_features))
 
-		mean2 = np.random.uniform(class2_mean_min - x, class2_mean_max - x,n_features) # [-1, 3, 0, 2, 3]
+		mean2 = np.random.uniform(class2_mean_min, class2_mean_max,n_features) # [-1, 3, 0, 2, 3]
 		cov2 = np.zeros((n_features,n_features))
 		np.fill_diagonal(cov2, np.random.uniform(class2_cov_min,class2_cov_max,n_features))
 
@@ -226,24 +229,8 @@ def make_classification_gaussian_with_true_prob(n_samples,
 		clf.fit(x_train, y_train)
 		accuracy = clf.score(x_test, y_test)
 		if accuracy < bais_accuracy and accuracy > bais_accuracy - 0.01 or bais_accuracy==0:
-			# print(f"Success in {n_features} n_features")
+			print(f"Success in {n_features} n_features accuracy {accuracy} runs {x}")
 			break
-
-	# this is to create some noise in the data based on the number of features to keep ACC the same
-	# y = np.concatenate((y[-int(30*math.log(n_features)):], y[:-int(30*math.log(n_features))])) # log method
-
-	# train RF and calculate ACC method
-	# for x in range(1, 300):
-	# 	y_shift = np.concatenate((y[-x:], y[:-x]))
-	# 	x_train, x_test, y_train, y_test = train_test_split(X, y_shift, test_size=0.2, shuffle=True, random_state=seed)
-	# 	clf = RandomForestClassifier(n_estimators=10)  
-	# 	clf.fit(x_train, y_train)
-	# 	accuracy = clf.score(x_test, y_test)
-	# 	if accuracy < bais_accuracy:
-	# 		break
-	# y = y_shift
-
-	# tp = np.concatenate([x1_pdf_dif, x2_pdf_dif])
 
 	return X, y, true_prob
 

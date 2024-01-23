@@ -31,7 +31,7 @@ def run_exp(exp_key, exp_values, params):
         res_runs = {} # results for each data set will be saved in here.
 
         # load data for different runs
-        data_runs = load_data_runs(params, exp_data_name, params["path"]) # "../../"
+        data_runs = load_data_runs(params, exp_data_name, params["path"], exp_key) # "../../"
 
         # to change the calib set size (only for calib size experiment)
         if exp_key == "calib_size":
@@ -58,9 +58,12 @@ def run_exp(exp_key, exp_values, params):
 
     return exp_res, data_list
         
-def load_data_runs(params, exp_data_name, real_data_path="."):
+def load_data_runs(params, exp_data_name, real_data_path=".", exp_key=""):
     data_runs = []
     if "synthetic" in params["data_name"]:
+        bc = 0.75
+        if exp_key != "n_features":
+            bs = 0
         if params["data_name"] == "synthetic":
             X, y, tp = dp.make_classification_gaussian_with_true_prob(params["data_size"], 
                                                                     params["n_features"], 
@@ -68,7 +71,11 @@ def load_data_runs(params, exp_data_name, real_data_path="."):
                                                                     class1_mean_max = params["class1_mean_max"],
                                                                     class2_mean_min = params["class2_mean_min"], 
                                                                     class2_mean_max = params["class2_mean_max"], 
-                                                                    seed=params["seed"])
+                                                                    class1_cov_min = params["class1_cov_min"], 
+                                                                    class1_cov_max = params["class1_cov_max"],
+                                                                    class2_cov_min = params["class2_cov_min"], 
+                                                                    class2_cov_max = params["class2_cov_max"] 
+                                                                    , bais_accuracy=bc)
         elif params["data_name"] == "synthetic2":
             X_temp, _ = make_classification(n_samples=params["data_size"], 
                         n_features= params["n_features"], 
