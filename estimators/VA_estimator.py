@@ -32,7 +32,11 @@ class VA_calib(BaseEstimator, ClassifierMixin):
 
         interval = np.concatenate((p0.reshape(-1,1), p1.reshape(-1,1)), axis=1)
         # fix mid point problem
-        res = np.mean(interval, axis=1)
+        mid_point = np.mean(interval, axis=1)
+        p0_point = np.min(interval, axis=1)
+        p1_point = np.max(interval, axis=1)
+
+        res = mid_point + (p1_point - p0_point) * (0.5 - mid_point)
         
         nan_indices = np.isnan(res)
         nan_indices_list = np.where(nan_indices)[0]
