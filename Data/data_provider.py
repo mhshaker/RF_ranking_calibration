@@ -201,17 +201,69 @@ def make_classification_gaussian_with_true_prob(n_samples,
 	# Synthetic data with n_features dimentions and n_classes classes
 
 	np.random.seed(seed)
-	x_pre = [0,5179,6570,560,1608,238,410,70,375,138,263,97,107,22,6,21,2,9,0,75,28,3,12,6,13,33,63,24,6,20,2,20,42,0,8,111,0,38,3,9,4,92,17,21,57,39,10,17]
-	for x in np.arange(-1, 200, 1):
-		if x == -1:
-			x = x_pre[n_features-50]
+	pre_x = { 
+				  2 : 0.293
+				, 3 : 0.172
+				, 4 : 0.091
+				, 5 : 0.122
+				, 6 : 0.001
+				, 7 : 0.01
+				, 8 : 0.251
+				, 9 : 0.005
+				, 10 : 0.023
+				, 11 : 0.019
+				, 12 : 0.058
+				, 13 : 0.01
+				, 14 : 0.011
+				, 15 : 0.002
+				, 16 : 0.006
+				, 17 : 0.005
+				, 18 : 0.003
+				, 19 : 0.007
+				, 20 : 0.007
+				, 21 : 0.04
+				, 22 : 0.049
+				, 23 : 0.034
+				, 24 : 0.024
+				, 25 : 0.019
+				, 26 : 0.018
+				, 27 : 0.03
+				, 28 : 0.014
+				, 29 : 0
+				, 30 : 0.015
+				, 31 : 0.066
+				, 32 : 0.023
+				, 33 : 0.004
+				, 34 : 0
+				, 35 : 0
+				, 36 : 0.003
+				, 37 : 0.055
+				, 38 : 0.006
+				, 39 : 0
+				, 40 : 0
+				, 41 : 0
+				, 42 : 0
+				, 43 : 0
+				, 44 : 0
+				, 45 : 0
+				, 46 : 0
+				, 47 : 0
+				, 48 : 0
+				, 49 : 0	
+				}	
+	
+	# for x in np.arange(-1, 200, 1):
+	for x in np.arange(0, 0.5, 0.0001):
+		if x == 0:
+			x = pre_x[n_features]
 
-		np.random.seed(x)
-		mean1 = np.random.uniform(class1_mean_min, class1_mean_max, n_features) # [0, 2, 3, -1, 9]
+		# np.random.seed(x)
+		
+		mean1 = np.random.uniform(class1_mean_min + x, class1_mean_max + x, n_features) #[0, 2, 3, -1, 9]
 		cov1 = np.zeros((n_features,n_features))
 		np.fill_diagonal(cov1, np.random.uniform(class1_cov_min,class1_cov_max,n_features))
 
-		mean2 = np.random.uniform(class2_mean_min, class2_mean_max,n_features) # [-1, 3, 0, 2, 3]
+		mean2 = np.random.uniform(class2_mean_min - x, class2_mean_max - x,n_features) # [-1, 3, 0, 2, 3]
 		cov2 = np.zeros((n_features,n_features))
 		np.fill_diagonal(cov2, np.random.uniform(class2_cov_min,class2_cov_max,n_features))
 
@@ -222,15 +274,100 @@ def make_classification_gaussian_with_true_prob(n_samples,
 		true_prob = multivariate_normal.pdf(X, mean2, cov2) * 0.5 / (0.5 * multivariate_normal.pdf(X, mean1, cov1) + 0.5 * multivariate_normal.pdf(X, mean2, cov2))
 		y = np.concatenate([np.zeros(len(x1)), np.ones(len(x2))])
 
+		# mean1 = np.random.uniform(class1_mean_min, class1_mean_max, n_features) # [0, 2, 3, -1, 9]
+		# cov1 = np.zeros((n_features,n_features))
+		# np.fill_diagonal(cov1, np.random.uniform(class1_cov_min,class1_cov_max,n_features))
+
+		# mean2 = np.random.uniform(class2_mean_min, class2_mean_max,n_features) # [-1, 3, 0, 2, 3]
+		# cov2 = np.zeros((n_features,n_features))
+		# np.fill_diagonal(cov2, np.random.uniform(class2_cov_min,class2_cov_max,n_features))
+
+		# x1 = np.random.multivariate_normal(mean1, cov1, n_samples)
+		# x2 = np.random.multivariate_normal(mean2, cov2, n_samples)
+
+		# X = np.concatenate([x1, x2])
+		# true_prob = multivariate_normal.pdf(X, mean2, cov2) * 0.5 / (0.5 * multivariate_normal.pdf(X, mean1, cov1) + 0.5 * multivariate_normal.pdf(X, mean2, cov2))
+		# y = np.concatenate([np.zeros(len(x1)), np.ones(len(x2))])
+
 		x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True, random_state=seed)
 		clf = RandomForestClassifier(n_estimators=100)  
 		# clf = GaussianNB()
 
 		clf.fit(x_train, y_train)
 		accuracy = clf.score(x_test, y_test)
-		if accuracy < bais_accuracy and accuracy > bais_accuracy - 0.01 or bais_accuracy==0:
+		if accuracy < bais_accuracy and accuracy > bais_accuracy - 0.02 or bais_accuracy==0:
 			print(f"Success in {n_features} n_features accuracy {accuracy} runs {x}")
 			break
+
+	return X, y, true_prob
+
+def make_classification_mixture_gaussian_with_true_prob(n_samples, 
+						n_features,
+						n_clusters, 
+						same_cov = True,
+						seed=0,
+						bais_accuracy= 0): #0.76 only for #features exp
+	n_samples = int(n_samples / 2)
+	# Synthetic data with n_features dimentions and n_classes classes
+
+	np.random.seed(seed)
+	
+	means1 = []
+	covariances1 = []
+	weights1 = []
+
+	means2 = []
+	covariances2 = []
+	weights2 = []
+
+	for i in range(n_clusters):
+		mean_min_max = np.random.randint(1, 20, size=2)
+		cov_min_max = np.random.randint(1, 5, size=2)
+		means1.append(np.random.uniform(mean_min_max.min(), mean_min_max.max(), n_features)) # [0, 2, 3, -1, 9]
+		cov1 = np.zeros((n_features,n_features))
+		np.fill_diagonal(cov1, np.random.uniform(cov_min_max.min(), cov_min_max.max(),n_features))
+		covariances1.append(cov1)
+		weights1.append(1 / n_clusters)  # Equal weights1 for all components
+
+		mean_min_max = np.random.randint(1, 20, size=2)
+		cov2_min_max = np.random.randint(1, 5, size=2)
+		if same_cov:
+			cov2_min_max = cov_min_max
+		means2.append(np.random.uniform(mean_min_max.min(), mean_min_max.max(), n_features)) # [0, 2, 3, -1, 9]
+		cov2 = np.zeros((n_features,n_features))
+		np.fill_diagonal(cov2, np.random.uniform(cov2_min_max.min(), cov2_min_max.max(),n_features))
+		covariances2.append(cov2)
+		weights2.append(1 / n_clusters)  # Equal weights for all components
+
+	data1 = []
+	for mean, covariance in zip(means1, covariances1):
+		data1.append(np.random.multivariate_normal(mean, covariance, n_samples))
+
+	data2 = []
+	for mean, covariance in zip(means2, covariances2):
+		data2.append(np.random.multivariate_normal(mean, covariance, n_samples))
+
+	x1 = np.concatenate(data1, axis=0)
+	x2 = np.concatenate(data2, axis=0)
+	X = np.concatenate([x1, x2])
+
+	# Calculate the PDF of the mixture Gaussian distributions
+	mixture_pdf1 = np.zeros(len(X))
+	for mean, covariance, weight in zip(means1, covariances1, weights1):
+		mixture_pdf1 += multivariate_normal(mean=mean, cov=covariance).pdf(X) * weight 
+
+	mixture_pdf2 = np.zeros(len(X))
+	for mean, covariance, weight in zip(means2, covariances2, weights2):
+		mixture_pdf2 += multivariate_normal(mean=mean, cov=covariance).pdf(X) * weight 
+
+	# Calculate the probabilities of each sample belonging to class 1
+	prob_class1 = mixture_pdf1 * 0.5  # Class 1 prior probability is 0.5
+	prob_class2 = mixture_pdf2 * 0.5  # Class 2 prior probability is 0.5
+
+	# Split true probabilities into two parts, one for each class
+	true_prob = prob_class2 / (prob_class1 + prob_class2)
+
+	y = np.concatenate([np.zeros(len(x1)), np.ones(len(x2))])
 
 	return X, y, true_prob
 

@@ -65,17 +65,21 @@ def load_data_runs(params, exp_data_name, real_data_path=".", exp_key=""):
         if exp_key != "n_features":
             bs = 0
         if params["data_name"] == "synthetic":
-            X, y, tp = dp.make_classification_gaussian_with_true_prob(params["data_size"], 
+            # X, y, tp = dp.make_classification_gaussian_with_true_prob(params["data_size"], 
+            #                                                         params["n_features"], 
+            #                                                         class1_mean_min = params["class1_mean_min"], 
+            #                                                         class1_mean_max = params["class1_mean_max"],
+            #                                                         class2_mean_min = params["class2_mean_min"], 
+            #                                                         class2_mean_max = params["class2_mean_max"], 
+            #                                                         class1_cov_min = params["class1_cov_min"], 
+            #                                                         class1_cov_max = params["class1_cov_max"],
+            #                                                         class2_cov_min = params["class2_cov_min"], 
+            #                                                         class2_cov_max = params["class2_cov_max"] 
+            #                                                         , bais_accuracy=bc)
+            X, y, tp = dp.make_classification_mixture_gaussian_with_true_prob(params["data_size"], 
                                                                     params["n_features"], 
-                                                                    class1_mean_min = params["class1_mean_min"], 
-                                                                    class1_mean_max = params["class1_mean_max"],
-                                                                    class2_mean_min = params["class2_mean_min"], 
-                                                                    class2_mean_max = params["class2_mean_max"], 
-                                                                    class1_cov_min = params["class1_cov_min"], 
-                                                                    class1_cov_max = params["class1_cov_max"],
-                                                                    class2_cov_min = params["class2_cov_min"], 
-                                                                    class2_cov_max = params["class2_cov_max"] 
-                                                                    , bais_accuracy=bc)
+                                                                    4)
+
         elif params["data_name"] == "synthetic2":
             X_temp, _ = make_classification(n_samples=params["data_size"], 
                         n_features= params["n_features"], 
