@@ -362,7 +362,7 @@ def calibration(data, params, seed=0):
         rff_p_test = RF_opt.predict_proba(data["x_test"], params["laplace"])
         results_dict[f"{data_name}_{method}_prob"] = rff_p_test
         if "CL" in metrics:
-            results_dict[f"{data_name}_{method}_prob_c"] = RF_opt.predict_proba(data["X"], params["laplace"])
+            results_dict[f"{data_name}_{method}_prob_c"] = RF_opt.predict_proba(data["X"], params["laplace"]) 
     
 
     method = "RF_large"
@@ -706,9 +706,9 @@ def calibration(data, params, seed=0):
     if "tce" in metrics:
         for method in calib_methods:
             # results_dict[f"{data_name}_{method}_tce"] = mean_squared_error(data["tp_test"], results_dict[f"{data_name}_{method}_prob"][:,1]) # mean squared error for TCE
+            
             true_prob_ = np.concatenate((data["tp_test"].reshape(-1,1), (1-data["tp_test"]).reshape(-1,1)), axis=1)
             pred_prob_ = np.concatenate((results_dict[f"{data_name}_{method}_prob"][:,1].reshape(-1,1), (1-results_dict[f"{data_name}_{method}_prob"][:,1]).reshape(-1,1)), axis=1)
-            # kl_divergence_value = (scipy.special.kl_div(true_prob_, pred_prob_)).mean() # TCE is the KL divergence     
             results_dict[f"{data_name}_{method}_tce"] = kl_divergence(true_prob_, pred_prob_)  # TCE is the KL divergence with epsilon to avoid inf problem       
 
 
