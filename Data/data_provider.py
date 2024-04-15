@@ -201,62 +201,8 @@ def make_classification_gaussian_with_true_prob(n_samples,
 	# Synthetic data with n_features dimentions and n_classes classes
 
 	np.random.seed(seed)
-	pre_x = { 
-				  2 : 0.293
-				, 3 : 0.172
-				, 4 : 0.091
-				, 5 : 0.122
-				, 6 : 0.001
-				, 7 : 0.01
-				, 8 : 0.251
-				, 9 : 0.005
-				, 10 : 0.023
-				, 11 : 0.019
-				, 12 : 0.058
-				, 13 : 0.01
-				, 14 : 0.011
-				, 15 : 0.002
-				, 16 : 0.006
-				, 17 : 0.005
-				, 18 : 0.003
-				, 19 : 0.007
-				, 20 : 0.007
-				, 21 : 0.04
-				, 22 : 0.049
-				, 23 : 0.034
-				, 24 : 0.024
-				, 25 : 0.019
-				, 26 : 0.018
-				, 27 : 0.03
-				, 28 : 0.014
-				, 29 : 0
-				, 30 : 0.015
-				, 31 : 0.066
-				, 32 : 0.023
-				, 33 : 0.004
-				, 34 : 0
-				, 35 : 0
-				, 36 : 0.003
-				, 37 : 0.055
-				, 38 : 0.006
-				, 39 : 0
-				, 40 : 0
-				, 41 : 0
-				, 42 : 0
-				, 43 : 0
-				, 44 : 0
-				, 45 : 0
-				, 46 : 0
-				, 47 : 0
-				, 48 : 0
-				, 49 : 0	
-				}	
 	
-	# for x in np.arange(-1, 200, 1):
 	for x in np.arange(0, 0.5, 0.0001):
-		if x == 0:
-			x = pre_x[n_features]
-
 		# np.random.seed(x)
 		
 		mean1 = np.random.uniform(class1_mean_min + x, class1_mean_max + x, n_features) #[0, 2, 3, -1, 9]
@@ -273,6 +219,9 @@ def make_classification_gaussian_with_true_prob(n_samples,
 		X = np.concatenate([x1, x2])
 		true_prob = multivariate_normal.pdf(X, mean2, cov2) * 0.5 / (0.5 * multivariate_normal.pdf(X, mean1, cov1) + 0.5 * multivariate_normal.pdf(X, mean2, cov2))
 		y = np.concatenate([np.zeros(len(x1)), np.ones(len(x2))])
+
+		if bais_accuracy == 0:
+			break
 
 		# mean1 = np.random.uniform(class1_mean_min, class1_mean_max, n_features) # [0, 2, 3, -1, 9]
 		# cov1 = np.zeros((n_features,n_features))

@@ -61,9 +61,6 @@ def run_exp(exp_key, exp_values, params):
 def load_data_runs(params, exp_data_name, real_data_path=".", exp_key=""):
     data_runs = []
     if "synthetic" in params["data_name"]:
-        bc = 0.75
-        if exp_key != "n_features":
-            bs = 0
         if params["data_name"] == "synthetic":
             X, y, tp = dp.make_classification_gaussian_with_true_prob(params["data_size"], 
                                                                     params["n_features"], 
@@ -74,8 +71,8 @@ def load_data_runs(params, exp_data_name, real_data_path=".", exp_key=""):
                                                                     class1_cov_min = params["class1_cov_min"], 
                                                                     class1_cov_max = params["class1_cov_max"],
                                                                     class2_cov_min = params["class2_cov_min"], 
-                                                                    class2_cov_max = params["class2_cov_max"] 
-                                                                    , bais_accuracy=bc)
+                                                                    class2_cov_max = params["class2_cov_max"], 
+                                                                    bais_accuracy=params["bais_accuracy"])
             # X, y, tp = dp.make_classification_mixture_gaussian_with_true_prob(params["data_size"], 
             #                                                         params["n_features"], 
             #                                                         4)
