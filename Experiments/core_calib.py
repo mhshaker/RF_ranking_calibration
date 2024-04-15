@@ -129,7 +129,7 @@ def calibration(data, params, seed=0):
     # train model - hyper opt
     time_rf_opt_calib_s = time.time()
     rf = IR_RF(random_state=seed)
-    RS = RandomizedSearchCV(rf, params["search_space"], scoring=["accuracy"], refit="accuracy", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
+    RS = RandomizedSearchCV(rf, params["search_space"], scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
     if params["oob"] == False:
         RS.fit(data["x_train"], data["y_train"])
     else:
@@ -205,7 +205,7 @@ def calibration(data, params, seed=0):
                 "max_features": ['sqrt', 'log2', None],
                 }
         dt = DecisionTreeClassifier(random_state=seed)
-        RS_dt = RandomizedSearchCV(dt, search_space_dt, scoring=["accuracy"], refit="accuracy", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
+        RS_dt = RandomizedSearchCV(dt, search_space_dt, scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
         RS_dt.fit(data["x_train_calib"], data["y_train_calib"])
         dt = RS_dt.best_estimator_
         results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_dt_opt_s
@@ -227,7 +227,7 @@ def calibration(data, params, seed=0):
                 "intercept_scaling": [0.1, 1, 10],
                 }
         lr = LogisticRegression(random_state=seed)
-        RS_lr = RandomizedSearchCV(lr, search_space_lr, scoring=["accuracy"], refit="accuracy", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
+        RS_lr = RandomizedSearchCV(lr, search_space_lr, scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
         RS_lr.fit(data["x_train_calib"], data["y_train_calib"])
         lr = RS_lr.best_estimator_
         results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_lr_opt_s
@@ -271,7 +271,7 @@ def calibration(data, params, seed=0):
             }
 
         svm = SVC(random_state=seed)
-        RS_svm = RandomizedSearchCV(svm, search_space_svm, scoring=["accuracy"], refit="accuracy", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
+        RS_svm = RandomizedSearchCV(svm, search_space_svm, scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
         RS_svm.fit(data["x_train_calib"], data["y_train_calib"])
         svm = RS_svm.best_estimator_
         results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_svm_opt_s
@@ -308,7 +308,7 @@ def calibration(data, params, seed=0):
         }
 
         nn = MLPClassifier(random_state=seed)
-        RS_nn = RandomizedSearchCV(nn, search_space_nn, scoring=["accuracy"], refit="accuracy", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
+        RS_nn = RandomizedSearchCV(nn, search_space_nn, scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
         RS_nn.fit(data["x_train_calib"], data["y_train_calib"])
         nn = RS_nn.best_estimator_
         results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_nn_opt_s
@@ -327,7 +327,7 @@ def calibration(data, params, seed=0):
             'var_smoothing': [1e-9, 1e-8, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1.0],
         }
         gnb = GaussianNB()
-        RS_gnb = RandomizedSearchCV(gnb, search_space_gnb, scoring=["accuracy"], refit="accuracy", cv=params["opt_cv"], n_iter=10, random_state=seed)
+        RS_gnb = RandomizedSearchCV(gnb, search_space_gnb, scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=10, random_state=seed)
         RS_gnb.fit(data["x_train_calib"], data["y_train_calib"])
         gnb = RS_gnb.best_estimator_
         results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_gnb_opt_s
