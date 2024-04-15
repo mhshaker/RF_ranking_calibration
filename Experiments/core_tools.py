@@ -74,8 +74,8 @@ def save_metrics_to_csv(tables, metrics, exp_name):
     for metric in metrics:
         tables[metric+ "_std"].round(5).to_csv(f"{path}/{metric}_std.csv")
 
-def save_metrics_to_latex(tables, metrics, path, sava_std=True):
-    path += "/metrics"
+def save_metrics_to_latex(tables, metrics, exp_name, sava_std=True):
+    path = f"./results/{exp_name}/metrics"
     if not os.path.exists(path):
         os.makedirs(path)
 
