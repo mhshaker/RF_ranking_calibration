@@ -205,6 +205,7 @@ def get_pre_x(n_features):
 		32: 0.94,
 		34: 0.94,
 		36: 0.967,
+
 		38: 0.799,
 		40: 0.199,
 		42: 0.659,
@@ -237,9 +238,11 @@ def make_classification_gaussian_with_true_prob(n_samples,
 
 	for x in x_list:
 		xx = x
-		if x == 1 or n_features > 36:
+		if x == 1:
 			xx = get_pre_x(n_features)
-		np.random.seed(int(xx* 100))
+		np.random.seed(int(xx* 100)) # change to xx later
+		if n_features > 36:
+			xx = 1
 
 		mean1 = np.random.uniform(class1_mean_min + xx, class1_mean_max + xx, n_features) #[0, 2, 3, -1, 9]
 		cov1 = np.zeros((n_features,n_features))
@@ -262,12 +265,12 @@ def make_classification_gaussian_with_true_prob(n_samples,
 		x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True, random_state=seed)
 		clf = RandomForestClassifier(n_estimators=100, random_state=seed)  
 
-		print(">>> f", n_features, " x ", xx)
+		# print(">>> f", n_features, " x ", xx)
   
 		clf.fit(x_train, y_train)
 		accuracy = clf.score(x_test, y_test)
 		if accuracy < bais_accuracy and accuracy > bais_accuracy - 0.05:
-			print(f"{n_features}: {x},")
+			# print(f"{n_features}: {x},")
 			# if xx != get_pre_x(n_features):
 			# 	print("pre_x did not work")
 			break
