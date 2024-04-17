@@ -359,10 +359,10 @@ def calibration(data, params, seed=0):
         results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_rf_opt_s
         RF_opt = RS.best_estimator_
 
-        rff_p_test = RF_opt.predict_proba(data["x_test"], params["laplace"])
+        rff_p_test = RF_opt.predict_proba(data["x_test"], 1) # params["laplace"]
         results_dict[f"{data_name}_{method}_prob"] = rff_p_test
         if "CL" in metrics:
-            results_dict[f"{data_name}_{method}_prob_c"] = RF_opt.predict_proba(data["X"], params["laplace"]) 
+            results_dict[f"{data_name}_{method}_prob_c"] = RF_opt.predict_proba(data["X"], 1) # params["laplace"] 
     
 
     method = "RF_large"

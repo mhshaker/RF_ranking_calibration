@@ -185,6 +185,36 @@ def x_y_q(X, n_copy=50, seed=0): # create true probability with repeating X inst
 
 	return XX, yy, PP
 
+def get_pre_x(n_features):
+	pre_x = {
+		2: 0.0,
+		4: 0.25,
+		6: 0.47,
+		8: 0.56,
+		10: 0.7,
+		12: 0.72,
+		14: 0.74,
+		16: 0.78,
+		18: 0.79,
+		20: 0.88,
+		22: 0.86,
+		24: 0.87,
+		26: 0.93,
+		28: 0.86,
+		30: 0.95,
+		32: 0.94,
+		34: 0.94,
+		36: 0.967,
+		38: 0.799,
+		40: 0.199,
+		42: 0.659,
+		44: 0.789,
+		46: 0.909,
+		48: 0.989,
+	}
+
+	return pre_x[n_features]
+
 def make_classification_gaussian_with_true_prob(n_samples, 
 						n_features, 
 						class1_mean_min=0, 
@@ -202,14 +232,20 @@ def make_classification_gaussian_with_true_prob(n_samples,
 
 	np.random.seed(seed)
 	
-	for x in np.arange(0, 0.5, 0.0001):
-		# np.random.seed(x)
-		
-		mean1 = np.random.uniform(class1_mean_min + x, class1_mean_max + x, n_features) #[0, 2, 3, -1, 9]
+	x_list = np.arange(1, 0, -0.001)
+	x_list = np.round(x_list, decimals=3)
+
+	for x in x_list:
+		xx = x
+		if x == 1 or n_features > 36:
+			xx = get_pre_x(n_features)
+		np.random.seed(int(xx* 100))
+
+		mean1 = np.random.uniform(class1_mean_min + xx, class1_mean_max + xx, n_features) #[0, 2, 3, -1, 9]
 		cov1 = np.zeros((n_features,n_features))
 		np.fill_diagonal(cov1, np.random.uniform(class1_cov_min,class1_cov_max,n_features))
 
-		mean2 = np.random.uniform(class2_mean_min - x, class2_mean_max - x,n_features) # [-1, 3, 0, 2, 3]
+		mean2 = np.random.uniform(class2_mean_min - xx, class2_mean_max - xx,n_features) # [-1, 3, 0, 2, 3]
 		cov2 = np.zeros((n_features,n_features))
 		np.fill_diagonal(cov2, np.random.uniform(class2_cov_min,class2_cov_max,n_features))
 
@@ -223,29 +259,17 @@ def make_classification_gaussian_with_true_prob(n_samples,
 		if bais_accuracy == 0:
 			break
 
-		# mean1 = np.random.uniform(class1_mean_min, class1_mean_max, n_features) # [0, 2, 3, -1, 9]
-		# cov1 = np.zeros((n_features,n_features))
-		# np.fill_diagonal(cov1, np.random.uniform(class1_cov_min,class1_cov_max,n_features))
-
-		# mean2 = np.random.uniform(class2_mean_min, class2_mean_max,n_features) # [-1, 3, 0, 2, 3]
-		# cov2 = np.zeros((n_features,n_features))
-		# np.fill_diagonal(cov2, np.random.uniform(class2_cov_min,class2_cov_max,n_features))
-
-		# x1 = np.random.multivariate_normal(mean1, cov1, n_samples)
-		# x2 = np.random.multivariate_normal(mean2, cov2, n_samples)
-
-		# X = np.concatenate([x1, x2])
-		# true_prob = multivariate_normal.pdf(X, mean2, cov2) * 0.5 / (0.5 * multivariate_normal.pdf(X, mean1, cov1) + 0.5 * multivariate_normal.pdf(X, mean2, cov2))
-		# y = np.concatenate([np.zeros(len(x1)), np.ones(len(x2))])
-
 		x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True, random_state=seed)
-		clf = RandomForestClassifier(n_estimators=100)  
-		# clf = GaussianNB()
+		clf = RandomForestClassifier(n_estimators=100, random_state=seed)  
 
+		print(">>> f", n_features, " x ", xx)
+  
 		clf.fit(x_train, y_train)
 		accuracy = clf.score(x_test, y_test)
-		if accuracy < bais_accuracy and accuracy > bais_accuracy - 0.02 or bais_accuracy==0:
-			print(f"Success in {n_features} n_features accuracy {accuracy} runs {x}")
+		if accuracy < bais_accuracy and accuracy > bais_accuracy - 0.05:
+			print(f"{n_features}: {x},")
+			# if xx != get_pre_x(n_features):
+			# 	print("pre_x did not work")
 			break
 
 	return X, y, true_prob
