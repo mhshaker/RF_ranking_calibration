@@ -136,39 +136,6 @@ def calibration(data, params, seed=0):
         RS.fit(data["x_train_calib"], data["y_train_calib"])
     time_rf_opt_calib = time.time() - time_rf_opt_calib_s
 
-    # rf_best = RS.best_estimator_
-
-    # opt_params = np.array(RS.cv_results_['params'])
-    # opt_rankings = np.array(RS.cv_results_['rank_test_neg_brier_score'])
-
-    # sorted_indices = np.argsort(opt_rankings, kind="stable")
-    # opt_params = opt_params[sorted_indices]
-    # params["opt_top_K"] = opt_params[:params["opt_top_K"]] # save the top K best performing RF params in opt_top_K
-
-    # if params["hyper_opt"] == "Default":
-    #     rf_best = rf
-    #     if params["oob"] == False:
-    #         rf_best.fit(data["x_train"], data["y_train"])
-    #     else:
-    #         rf_best.fit(data["x_train_calib"], data["y_train_calib"])
-
-    # elif params["hyper_opt"] == "Manual":
-    #     rf_best = IR_RF(n_estimators=params["search_space"]["n_estimators"][0], max_depth=params["depth"], oob_score=params["oob"], random_state=seed)
-    #     if params["oob"] == False:
-    #         rf_best.fit(data["x_train"], data["y_train"])
-    #     else:
-    #         rf_best.fit(data["x_train_calib"], data["y_train_calib"])
-
-    # check_dummy=True
-    # if check_dummy:
-    #     dummy_clf = DummyClassifier(strategy="most_frequent").fit(data["x_train"], data["y_train"])
-    #     d_s = dummy_clf.score(data["x_test"], data["y_test"])
-    #     rf_best_s = rf_best.score(data["x_test"], data["y_test"])
-    #     l_dif = (rf_best_s - d_s ) * 100
-    #     # print(f"data {data['name']} learn diff {rf_best_s - d_s}")
-    #     if l_dif <= 1:
-    #         print(f">>>>>>> data {data['name']} NOT LEARNING - learnign diff is {l_dif}")
-
     # RF = rf_best
     RF = RS.best_estimator_
 
@@ -359,11 +326,47 @@ def calibration(data, params, seed=0):
         results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_rf_opt_s
         RF_opt = RS.best_estimator_
 
-        rff_p_test = RF_opt.predict_proba(data["x_test"], params["laplace"])
+        rff_p_test = RF_opt.predict_proba(data["x_test"], 1) # params["laplace"]
         results_dict[f"{data_name}_{method}_prob"] = rff_p_test
         if "CL" in metrics:
-            results_dict[f"{data_name}_{method}_prob_c"] = RF_opt.predict_proba(data["X"], params["laplace"]) 
+            results_dict[f"{data_name}_{method}_prob_c"] = RF_opt.predict_proba(data["X"], 1) # params["laplace"] 
     
+
+    method = "CT"
+    if method in calib_methods:
+        time_rf_ct = time.time()
+        rf_ct = IR_RF(n_estimators=params["search_space"]["n_estimators"][0], random_state=seed, curt_v=params["curt_v"]).fit(data["x_train_calib"], data["y_train_calib"])
+        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_rf_d_s
+
+        rf_ct_p_test = rf_ct.predict_proba(data["x_test"], params["laplace"])
+        
+        results_dict[f"{data_name}_{method}_prob"] = rf_ct_p_test
+        if "CL" in metrics:
+            results_dict[f"{data_name}_{method}_prob_c"] = rf_ct.predict_proba(data["X"], params["laplace"])
+
+
+
+    method = "CT_opt"
+    if method in calib_methods:
+        time_rf_ct = time.time()
+
+        rf = IR_RF(random_state=seed)
+        ct_param_space = {
+                    "n_estimators": [10],
+                    "min_samples_leaf":  np.arange(1, 200).tolist(),
+                    # "oob_score": [False]
+                    }
+
+        RS_ct = RandomizedSearchCV(rf, ct_param_space, scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
+        RS_ct.fit(data["x_train_calib"], data["y_train_calib"])
+        RF_ct = RS_ct.best_estimator_
+
+        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_rf_ct
+        rfct_p_test = RF_ct.predict_proba(data["x_test"], 0)
+        results_dict[f"{data_name}_{method}_prob"] = rfct_p_test
+        if "CL" in metrics:
+            results_dict[f"{data_name}_{method}_prob_c"] = RF_ct.predict_proba(data["X"], 0) 
+
 
     method = "RF_large"
     if method in calib_methods:

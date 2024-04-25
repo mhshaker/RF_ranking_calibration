@@ -86,7 +86,7 @@ def save_metrics_to_latex(tables, metrics, exp_name, sava_std=True):
         for metric in metrics:
             tables[metric+ "_std"].round(5).to_latex(f"{path}/{metric}_std.txt")
 
-def res_statistics(tables, metrics, path, colors):
+def res_statistics(tables, metrics, path, colors=None):
     path += "/statistics_nf"
 
     if not os.path.exists(path):
@@ -135,8 +135,11 @@ def res_statistics(tables, metrics, path, colors):
             plt.close() 
 
             plt.figure(figsize=(10, 4), dpi=100)
-            plt.title(f"Critical difference diagram of average score ranks ({metric})")    
-            sp.critical_difference_diagram(avg_rank, posthoc_res, color_palette=colors)
+            plt.title(f"Critical difference diagram of average score ranks ({metric})")
+            if colors != None:    
+                sp.critical_difference_diagram(avg_rank, posthoc_res, color_palette=colors)
+            else:
+                sp.critical_difference_diagram(avg_rank, posthoc_res)
 
             # path = f"./results/{params['exp_name']}/statistics"
             if not os.path.exists(path):

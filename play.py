@@ -1,45 +1,45 @@
-import numpy as np
-import scikit_posthocs as sp
-import pandas as pd
-import scipy.stats as ss
-import matplotlib.pyplot as plt
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.utils.validation import check_array
 
-rng = np.random.default_rng(1)
-dict_data = {
-    'model1': rng.normal(loc=0.2, scale=0.1, size=30),
-    'model2': rng.normal(loc=0.2, scale=0.1, size=30),
-    'model3': rng.normal(loc=0.4, scale=0.1, size=30),
-    'model4': rng.normal(loc=0.5, scale=0.1, size=30),
-    'model5': rng.normal(loc=0.7, scale=0.1, size=30),
-    'model6': rng.normal(loc=0.7, scale=0.1, size=30),
-    'model7': rng.normal(loc=0.8, scale=0.1, size=30),
-    'model8': rng.normal(loc=0.9, scale=0.1, size=30),
-}
-data = (
-  pd.DataFrame(dict_data)
-  .rename_axis('cv_fold')
-  .melt(
-      var_name='estimator',
-      value_name='score',
-      ignore_index=False,
-  )
-  .reset_index()
-)
+class CustomRandomForestClassifier(RandomForestClassifier):
+    def __init__(self, curt_v=0.0, **kwargs):
+        super().__init__(**kwargs)
+        self.curt_v = curt_v
 
-avg_rank = data.groupby('cv_fold').score.rank(pct=True).groupby(data.estimator).mean()
+    def fit(self, X, y, **kwargs):
+        # Validate and preprocess the input data
+        X = check_array(X, accept_sparse='csc', dtype='float32')
+        
+        # Apply a custom transformation to the data using curt_v
+        X_transformed = self._apply_custom_transformation(X)
+        
+        # Fit the model with the transformed data
+        super().fit(X_transformed, y, **kwargs)
 
-ss.friedmanchisquare(*dict_data.values())
+    def _apply_custom_transformation(self, X):
+        # Implement a custom transformation using curt_v
+        return X ** self.curt_v
 
-test_results = sp.posthoc_conover_friedman(
-    data,
-    melted=True,
-    block_col='cv_fold',
-    group_col='estimator',
-    y_col='score',
-)
+# Example usage:
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
 
+# Generate sample data
+X, y = make_classification(n_samples=1000, n_features=20, random_state=42)
 
-plt.figure(figsize=(10, 2), dpi=100)
-plt.title('Critical difference diagram of average score ranks')
-sp.critical_difference_diagram(avg_rank, test_results, color_palette={})
-plt.show()
+# Split the data into training and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Create an instance of the custom RandomForestClassifier
+clf = CustomRandomForestClassifier(curt_v=0.5, n_estimators=100, random_state=42)
+
+# Fit the model
+clf.fit(X_train, y_train)
+
+# Predict on the test set
+y_pred = clf.predict(X_test)
+
+# Evaluate the accuracy
+accuracy = accuracy_score(y_test, y_pred)
+print(f"Accuracy: {accuracy:.4f}")

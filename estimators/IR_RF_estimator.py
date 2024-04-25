@@ -1,6 +1,30 @@
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 
+def curtailment(tree, x_data, curt_v, laplace_smoothing):
+    tree_prob = tree.predict_proba(x_data)
+    decision_path_array = tree.decision_path(x_data)
+
+    decision_nodes_array = []
+    for data_index in range(len(x_data)):
+        # print("---------------------------------")
+        # print(decision_path_array)
+        # print("---------------------------------")
+        node_index = decision_path_array.indices[
+            decision_path_array.indptr[data_index] : decision_path_array.indptr[data_index + 1]
+        ]
+
+        for leaf_index in node_index[::-1]: # start parsing the decision path from the end
+            leaf_values = tree.tree_.value[leaf_index]
+            leaf_samples = np.array(leaf_values).sum()
+            if leaf_samples >= curt_v:
+                for i,v in enumerate(leaf_values[0]):
+                    L = laplace_smoothing
+                    tree_prob[data_index][i] = (v + L) / (leaf_samples + (len(leaf_values[0]) * L))
+                break # once statistically enough samples are found, stop parsing back the decision path
+
+        decision_nodes_array.append(node_index)
+    return tree_prob
 
 def tree_laplace_corr(tree, x_data, laplace_smoothing, return_counts=False):
     tree_prob = tree.predict_proba(x_data)
@@ -30,13 +54,26 @@ def convert_prob_2D(prob1D):
 
 class IR_RF(RandomForestClassifier):
 
-    # refrence_prob = np.array()
+    def __init__(self, curt_v=0.0, **kwargs):
+        super().__init__(**kwargs)
+        """
+        Parameters
+        ----------
+        curt_v : int, optional (default=0)
+            The value of the curt_v hyperparameter is for curtailment.
+        
+        **kwargs : other keyword arguments
+            Other keyword arguments accepted by RandomForestClassifier.
+        """
+        self.curt_v = curt_v
 
     def predict_proba(self, X, laplace=0, return_tree_prob=False, classifier_tree=False): # normal random forest predic_proba with the addition of Laplace
         prob_matrix  = []
         for estimator in self.estimators_:
             if classifier_tree:
                 tree_output = estimator.predict(X) # only the desision
+            elif self.curt_v > 0:
+                tree_output = curtailment(estimator, X, self.curt_v, laplace) # probability
             else:
                 tree_output = tree_laplace_corr(estimator,X, laplace) # probability
             prob_matrix.append(tree_output)
