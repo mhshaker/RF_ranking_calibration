@@ -1,8 +1,5 @@
-x = {
-    "a": 2,
-    "b": 3,
-}
-y = x.copy()
-y["c"] = 5
+import numpy as np
+
+x = np.arange(2, 10).tolist() + [None]
 
 print("x", x)

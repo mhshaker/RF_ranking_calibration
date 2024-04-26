@@ -158,6 +158,200 @@ def calibration(data, params, seed=0):
 
     # all input probs to get the fit calib model
 
+    ### full data (train + calib)
+    method = "RF_d"
+    if method in calib_methods:
+        time_rf_d_s = time.time()
+        rf_d = IR_RF(n_estimators=params["search_space"]["n_estimators"][0], random_state=seed).fit(data["x_train_calib"], data["y_train_calib"])
+        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_rf_d_s
+
+        rf_d_p_test = rf_d.predict_proba(data["x_test"], params["laplace"])
+        results_dict[f"{data_name}_{method}_prob"] = rf_d_p_test
+        if "CL" in metrics:
+            results_dict[f"{data_name}_{method}_prob_c"] = rf_d.predict_proba(data["X"], params["laplace"])
+
+    method = "RF_large"
+    if method in calib_methods:
+        time_rfl_s = time.time()
+        # RF_large_p_test_fd = bc.predict_largeRF(data["x_test"], data["x_train_calib"], data["y_train_calib"], RF)
+
+        # best_rf_params = RF.get_params().copy()
+        # best_rf_params['n_estimators'] = best_rf_params['n_estimators'] * params["boot_count"]
+
+        rf_l = IR_RF(n_estimators=params["search_space"]["n_estimators"][0]* params["boot_count"], random_state=seed).fit(data["x_train_calib"], data["y_train_calib"])
+        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_rfl_s
+
+        # rf_l = IR_RF(**best_rf_params).fit(data["x_train_calib"], data["y_train_calib"])
+        RF_large_p_test_fd = rf_l.predict_proba(data["x_test"], params["laplace"])
+
+        results_dict[f"{data_name}_{method}_prob"] = RF_large_p_test_fd
+        if "CL" in metrics:
+            # results_dict[f"{data_name}_{method}_prob_c"] = bc.predict_largeRF(data["X"], data["x_train_calib"], data["y_train_calib"], RF)
+            results_dict[f"{data_name}_{method}_prob_c"] = rf_l.predict_proba(data["X"], params["laplace"])
+
+    method = "RF_opt"
+    if method in calib_methods:
+        time_rf_opt_s = time.time()
+        # train model - hyper opt with x_train_calib
+        RS.fit(data["x_train_calib"], data["y_train_calib"])
+        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_rf_opt_s
+        RF_opt = RS.best_estimator_
+
+        rff_p_test = RF_opt.predict_proba(data["x_test"]) # params["laplace"]
+        results_dict[f"{data_name}_{method}_prob"] = rff_p_test
+        if "CL" in metrics:
+            results_dict[f"{data_name}_{method}_prob_c"] = RF_opt.predict_proba(data["X"]) # params["laplace"] 
+    
+
+    method = "RF_opt_CT"
+    if method in calib_methods:
+        time_rf_ct = time.time()
+
+        ct_param_space = params["search_space"].copy()
+        ct_param_space["min_samples_leaf"] = params["curt_v"]
+
+        rf = IR_RF(random_state=seed)
+        RS_ct_2 = RandomizedSearchCV(rf, ct_param_space, scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
+        RS_ct_2.fit(data["x_train_calib"], data["y_train_calib"])
+        RF_ct = RS_ct_2.best_estimator_
+
+        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_rf_ct
+        rfct_p_test = RF_ct.predict_proba(data["x_test"])
+        results_dict[f"{data_name}_{method}_prob"] = rfct_p_test
+        if "CL" in metrics:
+            results_dict[f"{data_name}_{method}_prob_c"] = RF_ct.predict_proba(data["X"]) 
+
+
+
+
+    method = "Platt"
+    if method in calib_methods:
+        time_platt_s = time.time()
+        plat_calib = _SigmoidCalibration().fit(rf_p_calib[:,1], y_p_calib)
+        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_platt_s + time_rf_opt_calib
+
+        plat_p_test = convert_prob_2D(plat_calib.predict(rf_p_test[:,1]))
+        results_dict[f"{data_name}_{method}_prob"] = plat_p_test
+        results_dict[f"{data_name}_{method}_fit"] = plat_calib.predict(tvec)
+        if "CL" in metrics:
+            results_dict[f"{data_name}_{method}_prob_c"] = convert_prob_2D(plat_calib.predict(results_dict[data["name"] + "_RF_prob_c"][:,1]))
+
+    # ISO calibration on RF
+    method = "ISO"
+    if method in calib_methods:
+        time_iso_s = time.time()
+        iso_calib = IsotonicRegression(out_of_bounds='clip').fit(rf_p_calib[:,1], y_p_calib)
+        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_iso_s + time_rf_opt_calib
+        
+        iso_p_test = convert_prob_2D(iso_calib.predict(rf_p_test[:,1]))
+        results_dict[f"{data_name}_{method}_prob"] = iso_p_test
+        results_dict[f"{data_name}_{method}_fit"] = iso_calib.predict(tvec)
+        if "CL" in metrics:
+            results_dict[f"{data_name}_{method}_prob_c"] = convert_prob_2D(iso_calib.predict(results_dict[data["name"] + "_RF_prob_c"][:,1]))
+
+    # CRF calibrator
+    method = "PPA"
+    if method in calib_methods:
+        time_crf_s = time.time()
+        crf_calib = CRF_calib(learning_method="sig_brior").fit(rf_p_calib[:,1], y_p_calib)
+        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_crf_s + time_rf_opt_calib
+        
+        crf_p_test = crf_calib.predict(rf_p_test[:,1])
+        results_dict[f"{data_name}_{method}_prob"] = crf_p_test
+        results_dict[f"{data_name}_{method}_fit"] = crf_calib.predict(tvec)[:,1]
+        if "CL" in metrics: 
+            results_dict[f"{data_name}_{method}_prob_c"] = crf_calib.predict(results_dict[data["name"] + "_RF_prob_c"][:,1])
+
+    # Venn abers
+    method = "VA"
+    if method in calib_methods:
+        time_va_s = time.time()
+        VA = VA_calib().fit(rf_p_calib[:,1], y_p_calib)
+        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_va_s + time_rf_opt_calib
+        
+        va_p_test = convert_prob_2D(VA.predict(rf_p_test[:,1]))
+        results_dict[f"{data_name}_{method}_prob"] = va_p_test
+        results_dict[f"{data_name}_{method}_fit"] = VA.predict(tvec)
+        if "CL" in metrics:
+            results_dict[f"{data_name}_{method}_prob_c"] = convert_prob_2D(VA.predict(results_dict[data["name"] + "_RF_prob_c"][:,1]))
+
+
+    # Beta calibration
+    method = "Beta"
+    if method in calib_methods:
+        time_beta_s = time.time()
+        beta_calib = BetaCalibration(parameters="abm").fit(rf_p_calib[:,1], y_p_calib)
+        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_beta_s + time_rf_opt_calib
+        
+        beta_p_test = convert_prob_2D(beta_calib.predict(rf_p_test[:,1]))
+        results_dict[f"{data_name}_{method}_prob"] = beta_p_test
+        results_dict[f"{data_name}_{method}_fit"] = beta_calib.predict(tvec)
+        if "CL" in metrics:
+            results_dict[f"{data_name}_{method}_prob_c"] = convert_prob_2D(beta_calib.predict(results_dict[data["name"] + "_RF_prob_c"][:,1]))
+
+    # tree LR calib
+    method = "tlr"
+    if method in calib_methods:
+        time_tlr_s = time.time()
+        tlr_calib = treeLR_calib().fit(RF, data["x_train"] ,data["y_train"], data["x_calib"], data["y_calib"])
+        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_tlr_s + time_rf_opt_calib
+        
+        tlr_p_test = tlr_calib.predict(data["x_test"])
+        results_dict[f"{data_name}_{method}_prob"] = tlr_p_test
+        # results_dict[data["name"] + "_tlr_fit"] = tlr_calib.predict(convert_prob_2D(tvec))[:,1]
+        if "CL" in metrics:
+            results_dict[f"{data_name}_{method}_prob_c"] = tlr_calib.predict(data["X"])
+
+    method = "CT"
+    if method in calib_methods:
+        time_rf_ct = time.time()
+        # prepare the grid space
+        ct_params = {
+                    "n_estimators": params["search_space"]["n_estimators"],
+                    "curt_v":  params["curt_v"],
+                    }        
+        rf_ct = IR_RF(random_state=seed)
+        RS_ct = RandomizedSearchCV(rf_ct, ct_params, scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
+        # if params["oob"] == False:
+        #     RS_ct.fit(data["x_train"], data["y_train"])
+        # else:
+        RS_ct.fit(data["x_train_calib"], data["y_train_calib"])
+        rf_ct = RS_ct.best_estimator_
+        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_rf_ct
+
+        rf_ct_p_test = rf_ct.predict_proba(data["x_test"], params["laplace"])
+        
+        results_dict[f"{data_name}_{method}_prob"] = rf_ct_p_test
+        if "CL" in metrics:
+            results_dict[f"{data_name}_{method}_prob_c"] = rf_ct.predict_proba(data["X"], params["laplace"])
+
+    # Elkan calibration
+    method = "Elkan"
+    if method in calib_methods:
+        time_elkan_s = time.time()
+        elkan_calib = Elkan_calib().fit(data["y_train"], data["y_calib"])
+        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_elkan_s + time_rf_opt_calib
+        
+        elkan_p_test = elkan_calib.predict(rf_p_test[:,1])
+        results_dict[f"{data_name}_{method}_prob"] = elkan_p_test
+        results_dict[f"{data_name}_{method}_fit"] = elkan_calib.predict(tvec)[:,1]
+
+    # RF ranking + ISO
+    method = "Rank"
+    if method in calib_methods:
+        time_rank_s = time.time()
+        x_calib_rank = RF.rank(data["x_calib"], class_to_rank=1, train_rank=True)
+        x_test_rank = RF.rank_refrence(data["x_test"], class_to_rank=1)
+
+        iso_rank = IsotonicRegression(out_of_bounds='clip').fit(x_calib_rank, data["y_calib"]) 
+        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_rank_s + time_rf_opt_calib
+        
+        rank_p_test = convert_prob_2D(iso_rank.predict(x_test_rank))
+        results_dict[f"{data_name}_{method}_prob"] = rank_p_test
+        # tvec_rank = RF.rank_refrence(data["x_test"], class_to_rank=1)
+        # results_dict[data["name"] + "_Rank_fit"] = iso_rank.predict(tvec_rank)
+
+
     ### models
 
     method = "DT"
@@ -306,388 +500,7 @@ def calibration(data, params, seed=0):
             results_dict[f"{data_name}_{method}_prob_c"] = gnb.predict_proba(data["X"])
 
 
-    ### full data (train + calib)
-    method = "RF_d"
-    if method in calib_methods:
-        time_rf_d_s = time.time()
-        rf_d = IR_RF(n_estimators=params["search_space"]["n_estimators"][0], random_state=seed).fit(data["x_train_calib"], data["y_train_calib"])
-        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_rf_d_s
 
-        rf_d_p_test = rf_d.predict_proba(data["x_test"], params["laplace"])
-        results_dict[f"{data_name}_{method}_prob"] = rf_d_p_test
-        if "CL" in metrics:
-            results_dict[f"{data_name}_{method}_prob_c"] = rf_d.predict_proba(data["X"], params["laplace"])
-
-    method = "RF_opt"
-    if method in calib_methods:
-        time_rf_opt_s = time.time()
-        # train model - hyper opt with x_train_calib
-        RS.fit(data["x_train_calib"], data["y_train_calib"])
-        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_rf_opt_s
-        RF_opt = RS.best_estimator_
-
-        rff_p_test = RF_opt.predict_proba(data["x_test"], 1) # params["laplace"]
-        results_dict[f"{data_name}_{method}_prob"] = rff_p_test
-        if "CL" in metrics:
-            results_dict[f"{data_name}_{method}_prob_c"] = RF_opt.predict_proba(data["X"], 1) # params["laplace"] 
-    
-
-    method = "CT"
-    if method in calib_methods:
-        time_rf_ct = time.time()
-        # prepare the grid space
-        ct_params = {
-                    "n_estimators": params["search_space"]["n_estimators"],
-                    "curt_v":  params["curt_v"],
-                    }        
-        rf_ct = IR_RF(random_state=seed)
-        RS_ct = RandomizedSearchCV(rf_ct, ct_params, scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
-        # if params["oob"] == False:
-        #     RS_ct.fit(data["x_train"], data["y_train"])
-        # else:
-        RS_ct.fit(data["x_train_calib"], data["y_train_calib"])
-        rf_ct = RS_ct.best_estimator_
-        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_rf_ct
-
-        rf_ct_p_test = rf_ct.predict_proba(data["x_test"], params["laplace"])
-        
-        results_dict[f"{data_name}_{method}_prob"] = rf_ct_p_test
-        if "CL" in metrics:
-            results_dict[f"{data_name}_{method}_prob_c"] = rf_ct.predict_proba(data["X"], params["laplace"])
-
-
-
-    method = "CT_minleaf"
-    if method in calib_methods:
-        time_rf_ct = time.time()
-
-        rf = IR_RF(random_state=seed)
-        ct_param_space = {
-                    "n_estimators": params["search_space"]["n_estimators"],
-                    "min_samples_leaf":  params["curt_v"],
-                    # "oob_score": [False]
-                    }
-
-        RS_ct_2 = RandomizedSearchCV(rf, ct_param_space, scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
-        RS_ct_2.fit(data["x_train_calib"], data["y_train_calib"])
-        RF_ct = RS_ct_2.best_estimator_
-
-        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_rf_ct
-        rfct_p_test = RF_ct.predict_proba(data["x_test"], 0)
-        results_dict[f"{data_name}_{method}_prob"] = rfct_p_test
-        if "CL" in metrics:
-            results_dict[f"{data_name}_{method}_prob_c"] = RF_ct.predict_proba(data["X"], 0) 
-
-
-    method = "RF_large"
-    if method in calib_methods:
-        time_rfl_s = time.time()
-        # RF_large_p_test_fd = bc.predict_largeRF(data["x_test"], data["x_train_calib"], data["y_train_calib"], RF)
-
-        # best_rf_params = RF.get_params().copy()
-        # best_rf_params['n_estimators'] = best_rf_params['n_estimators'] * params["boot_count"]
-
-        rf_l = IR_RF(n_estimators=params["search_space"]["n_estimators"][0]* params["boot_count"], random_state=seed).fit(data["x_train_calib"], data["y_train_calib"])
-        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_rfl_s
-
-        # rf_l = IR_RF(**best_rf_params).fit(data["x_train_calib"], data["y_train_calib"])
-        RF_large_p_test_fd = rf_l.predict_proba(data["x_test"], params["laplace"])
-
-        results_dict[f"{data_name}_{method}_prob"] = RF_large_p_test_fd
-        if "CL" in metrics:
-            # results_dict[f"{data_name}_{method}_prob_c"] = bc.predict_largeRF(data["X"], data["x_train_calib"], data["y_train_calib"], RF)
-            results_dict[f"{data_name}_{method}_prob_c"] = rf_l.predict_proba(data["X"], params["laplace"])
-
-
-    # bc = Boot_calib(boot_count=params["boot_count"])
-
-    # method = "RF_ens_r"
-    # if method in calib_methods:
-    #     RF_ens_p_test_fd = bc.predict_ens(data["x_test"], data["x_train_calib"], data["y_train_calib"], RF)
-    #     results_dict[f"{data_name}_{method}_prob"] = RF_ens_p_test_fd
-    #     if "CL" in metrics:
-    #         results_dict[f"{data_name}_{method}_prob_c"] = bc.predict_ens(data["X"], data["x_train_calib"], data["y_train_calib"], RF)
-
-    # method = "RF_ens_k"
-    # if method in calib_methods:
-    #     RF_ens_k_p_test_fd = bc.predict_ens_params(data["x_test"], data["x_train_calib"], data["y_train_calib"], params["opt_top_K"], seed)
-    #     results_dict[f"{data_name}_{method}_prob"] = RF_ens_k_p_test_fd
-    #     if "CL" in metrics:
-    #         results_dict[f"{data_name}_{method}_prob_c"] = bc.predict_ens_params(data["X"], data["x_train_calib"], data["y_train_calib"], params["opt_top_K"], seed)
-
-    method = "Platt"
-    if method in calib_methods:
-        time_platt_s = time.time()
-        plat_calib = _SigmoidCalibration().fit(rf_p_calib[:,1], y_p_calib)
-        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_platt_s + time_rf_opt_calib
-
-        plat_p_test = convert_prob_2D(plat_calib.predict(rf_p_test[:,1]))
-        results_dict[f"{data_name}_{method}_prob"] = plat_p_test
-        results_dict[f"{data_name}_{method}_fit"] = plat_calib.predict(tvec)
-        if "CL" in metrics:
-            results_dict[f"{data_name}_{method}_prob_c"] = convert_prob_2D(plat_calib.predict(results_dict[data["name"] + "_RF_prob_c"][:,1]))
-
-    # ISO calibration on RF
-    method = "ISO"
-    if method in calib_methods:
-        time_iso_s = time.time()
-        iso_calib = IsotonicRegression(out_of_bounds='clip').fit(rf_p_calib[:,1], y_p_calib)
-        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_iso_s + time_rf_opt_calib
-        
-        iso_p_test = convert_prob_2D(iso_calib.predict(rf_p_test[:,1]))
-        results_dict[f"{data_name}_{method}_prob"] = iso_p_test
-        results_dict[f"{data_name}_{method}_fit"] = iso_calib.predict(tvec)
-        if "CL" in metrics:
-            results_dict[f"{data_name}_{method}_prob_c"] = convert_prob_2D(iso_calib.predict(results_dict[data["name"] + "_RF_prob_c"][:,1]))
-
-    # CRF calibrator
-    method = "PPA"
-    if method in calib_methods:
-        time_crf_s = time.time()
-        crf_calib = CRF_calib(learning_method="sig_brior").fit(rf_p_calib[:,1], y_p_calib)
-        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_crf_s + time_rf_opt_calib
-        
-        crf_p_test = crf_calib.predict(rf_p_test[:,1])
-        results_dict[f"{data_name}_{method}_prob"] = crf_p_test
-        results_dict[f"{data_name}_{method}_fit"] = crf_calib.predict(tvec)[:,1]
-        if "CL" in metrics: 
-            results_dict[f"{data_name}_{method}_prob_c"] = crf_calib.predict(results_dict[data["name"] + "_RF_prob_c"][:,1])
-
-    # Venn abers
-    method = "VA"
-    if method in calib_methods:
-        time_va_s = time.time()
-        VA = VA_calib().fit(rf_p_calib[:,1], y_p_calib)
-        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_va_s + time_rf_opt_calib
-        
-        va_p_test = convert_prob_2D(VA.predict(rf_p_test[:,1]))
-        results_dict[f"{data_name}_{method}_prob"] = va_p_test
-        results_dict[f"{data_name}_{method}_fit"] = VA.predict(tvec)
-        if "CL" in metrics:
-            results_dict[f"{data_name}_{method}_prob_c"] = convert_prob_2D(VA.predict(results_dict[data["name"] + "_RF_prob_c"][:,1]))
-
-
-    # Beta calibration
-    method = "Beta"
-    if method in calib_methods:
-        time_beta_s = time.time()
-        beta_calib = BetaCalibration(parameters="abm").fit(rf_p_calib[:,1], y_p_calib)
-        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_beta_s + time_rf_opt_calib
-        
-        beta_p_test = convert_prob_2D(beta_calib.predict(rf_p_test[:,1]))
-        results_dict[f"{data_name}_{method}_prob"] = beta_p_test
-        results_dict[f"{data_name}_{method}_fit"] = beta_calib.predict(tvec)
-        if "CL" in metrics:
-            results_dict[f"{data_name}_{method}_prob_c"] = convert_prob_2D(beta_calib.predict(results_dict[data["name"] + "_RF_prob_c"][:,1]))
-
-    # tree LR calib
-    method = "tlr"
-    if method in calib_methods:
-        time_tlr_s = time.time()
-        tlr_calib = treeLR_calib().fit(RF, data["x_train"] ,data["y_train"], data["x_calib"], data["y_calib"])
-        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_tlr_s + time_rf_opt_calib
-        
-        tlr_p_test = tlr_calib.predict(data["x_test"])
-        results_dict[f"{data_name}_{method}_prob"] = tlr_p_test
-        # results_dict[data["name"] + "_tlr_fit"] = tlr_calib.predict(convert_prob_2D(tvec))[:,1]
-        if "CL" in metrics:
-            results_dict[f"{data_name}_{method}_prob_c"] = tlr_calib.predict(data["X"])
-
-    # Elkan calibration
-    method = "Elkan"
-    if method in calib_methods:
-        time_elkan_s = time.time()
-        elkan_calib = Elkan_calib().fit(data["y_train"], data["y_calib"])
-        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_elkan_s + time_rf_opt_calib
-        
-        elkan_p_test = elkan_calib.predict(rf_p_test[:,1])
-        results_dict[f"{data_name}_{method}_prob"] = elkan_p_test
-        results_dict[f"{data_name}_{method}_fit"] = elkan_calib.predict(tvec)[:,1]
-
-    # RF ranking + ISO
-    method = "Rank"
-    if method in calib_methods:
-        time_rank_s = time.time()
-        x_calib_rank = RF.rank(data["x_calib"], class_to_rank=1, train_rank=True)
-        x_test_rank = RF.rank_refrence(data["x_test"], class_to_rank=1)
-
-        iso_rank = IsotonicRegression(out_of_bounds='clip').fit(x_calib_rank, data["y_calib"]) 
-        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_rank_s + time_rf_opt_calib
-        
-        rank_p_test = convert_prob_2D(iso_rank.predict(x_test_rank))
-        results_dict[f"{data_name}_{method}_prob"] = rank_p_test
-        # tvec_rank = RF.rank_refrence(data["x_test"], class_to_rank=1)
-        # results_dict[data["name"] + "_Rank_fit"] = iso_rank.predict(tvec_rank)
-
-    # # perfect rank + ISO
-    # method = "prank"
-    # if method in calib_methods:
-    #     iso_rank = IsotonicRegression(out_of_bounds='clip').fit(data["tp_calib"], data["y_calib"]) 
-    #     rank_p_test = convert_prob_2D(iso_rank.predict(data["tp_test"]))
-    #     results_dict[f"{data_name}_{method}_prob"] = rank_p_test
-
-    # method = "RF_CT"
-    # if method in calib_methods:
-    #     rf_ct_test = RF.predict_proba(data["x_test"], classifier_tree=True)
-    #     results_dict[f"{data_name}_{method}_prob"] = rf_ct_test
-
-    # method = "RF_Laplace"
-    # if method in calib_methods:
-    #     rf_lap_test = RF.predict_proba(data["x_test"], laplace=1)
-    #     results_dict[f"{data_name}_{method}_prob"] = rf_lap_test
-
-
-
-    # results_dict[data["name"] + "_RF_prob_train"] = RF.predict_proba(data["x_train"])
-
-    # bc = Boot_calib(boot_count=params["boot_count"])
-    # RF_ens_p_test = bc.predict_ens(data["x_test"], data["x_train"], data["y_train"], RF)
-    # RF_ens_p_calib = bc.predict_ens(data["x_calib"], data["x_train"], data["y_train"], RF)
-    # RF_ens_p_c = bc.predict_ens(data["X"], data["x_train"], data["y_train"], RF)
-
-    # RF_ens_k_p_test = bc.predict_ens_params(data["x_test"], data["x_train"], data["y_train"], params["opt_top_K"], seed)
-    # RF_ens_k_p_calib = bc.predict_ens_params(data["x_calib"], data["x_train"], data["y_train"], params["opt_top_K"], seed)
-    # RF_ens_k_p_c = bc.predict_ens_params(data["X"], data["x_train"], data["y_train"], params["opt_top_K"], seed)
-
-    # RF_large_p_test = bc.predict_largeRF(data["x_test"], data["x_train"], data["y_train"], RF)
-    # RF_large_p_calib = bc.predict_largeRF(data["x_calib"], data["x_train"], data["y_train"], RF)
-    # RF_large_p_c = bc.predict_largeRF(data["X"], data["x_train"], data["y_train"], RF)
-
-    # ### RF_ens
-    # method = "RF_ens_line"
-    # if method in calib_methods:
-    #     lr_calib = LinearRegression().fit(RF_ens_p_calib, data["y_calib"])
-    #     y_pred_clipped = np.clip(lr_calib.predict(RF_ens_p_test), 0, 1)
-    #     ebl_p_test = convert_prob_2D(y_pred_clipped)
-    #     results_dict[f"{data_name}_{method}_prob"] = ebl_p_test
-
-    # method = "RF_ens_CRF"
-    # if method in calib_methods:
-    #     crf_calib = CRF_calib(learning_method="sig_brior").fit(RF_ens_p_calib[:,1], data["y_calib"])
-    #     ebl_p_test = crf_calib.predict(RF_ens_p_test[:,1])
-    #     results_dict[f"{data_name}_{method}_prob"] = ebl_p_test
-
-    # method = "RF_ens_Platt"
-    # if method in calib_methods:
-    #     plat_calib = _SigmoidCalibration().fit(RF_ens_p_calib[:,1], data["y_calib"])
-    #     ebl_p_test = convert_prob_2D(plat_calib.predict(RF_ens_p_test[:,1]))
-    #     results_dict[f"{data_name}_{method}_prob"] = ebl_p_test
-
-    # method = "RF_ens_ISO"
-    # if method in calib_methods:
-    #     iso_calib = IsotonicRegression(out_of_bounds='clip').fit(RF_ens_p_calib[:,1], data["y_calib"])
-    #     ebl_p_test = convert_prob_2D(iso_calib.predict(RF_ens_p_test[:,1]))
-    #     results_dict[f"{data_name}_{method}_prob"] = ebl_p_test
-
-    # method = "RF_ens_Beta"
-    # if method in calib_methods:
-    #     beta_calib = BetaCalibration(parameters="abm").fit(RF_ens_p_calib[:,1], data["y_calib"])
-    #     ebl_p_test = convert_prob_2D(beta_calib.predict(RF_ens_p_test[:,1]))
-    #     results_dict[f"{data_name}_{method}_prob"] = ebl_p_test
-
-    # ### RF_large
-    # method = "RF_large_line"
-    # if method in calib_methods:
-    #     lr_calib = LinearRegression().fit(RF_large_p_calib, data["y_calib"])
-    #     y_pred_clipped = np.clip(lr_calib.predict(RF_large_p_test), 0, 1)
-    #     ebl_p_test = convert_prob_2D(y_pred_clipped)
-    #     results_dict[f"{data_name}_{method}_prob"] = ebl_p_test
-
-    # method = "RF_large_CRF"
-    # if method in calib_methods:
-    #     crf_calib = CRF_calib(learning_method="sig_brior").fit(RF_large_p_calib[:,1], data["y_calib"])
-    #     ebl_p_test = crf_calib.predict(RF_large_p_test[:,1])
-    #     results_dict[f"{data_name}_{method}_prob"] = ebl_p_test
-
-    # method = "RF_large_Platt"
-    # if method in calib_methods:
-    #     plat_calib = _SigmoidCalibration().fit(RF_large_p_calib[:,1], data["y_calib"])
-    #     ebl_p_test = convert_prob_2D(plat_calib.predict(RF_large_p_test[:,1]))
-    #     results_dict[f"{data_name}_{method}_prob"] = ebl_p_test
-
-    # method = "RF_large_ISO"
-    # if method in calib_methods:
-    #     iso_calib = IsotonicRegression(out_of_bounds='clip').fit(RF_large_p_calib[:,1], data["y_calib"])
-    #     ebl_p_test = convert_prob_2D(iso_calib.predict(RF_large_p_test[:,1]))
-    #     results_dict[f"{data_name}_{method}_prob"] = ebl_p_test
-
-    # method = "RF_large_Beta"
-    # if method in calib_methods:
-    #     beta_calib = BetaCalibration(parameters="abm").fit(RF_large_p_calib[:,1], data["y_calib"])
-    #     ebl_p_test = convert_prob_2D(beta_calib.predict(RF_large_p_test[:,1]))
-    #     results_dict[f"{data_name}_{method}_prob"] = ebl_p_test
-
-    # ### RF_ens_k
-    # method = "RF_ens_k_Platt"
-    # if method in calib_methods:
-    #     plat_calib = _SigmoidCalibration().fit(RF_ens_k_p_calib[:,1], data["y_calib"])
-    #     ebl_p_test = convert_prob_2D(plat_calib.predict(RF_ens_k_p_test[:,1]))
-    #     results_dict[f"{data_name}_{method}_prob"] = ebl_p_test
-
-    # method = "Line"
-    # if method in calib_methods:
-    #     lr_calib = LinearRegression().fit(rf_p_calib, data["y_calib"])
-    #     y_pred_clipped = np.clip(lr_calib.predict(rf_p_test), 0, 1)
-    #     lr_p_test = convert_prob_2D(y_pred_clipped)
-    #     results_dict[f"{data_name}_{method}_prob"] = lr_p_test
-    #     results_dict[f"{data_name}_{method}_fit"] = np.clip(lr_calib.predict(convert_prob_2D(tvec)), 0, 1)
-
-
-    # method = "Platt_d"
-    # if method in calib_methods:
-    #     rf_d_platt = IR_RF(n_estimators=params["search_space"]["n_estimators"][0], random_state=seed).fit(data["x_train"], data["y_train"])
-    #     rf_d_p_test = rf_d.predict_proba(data["x_test"])
-    #     rf_d_p_calib = rf_d_platt.predict_proba(data["x_calib"])
-    #     plat_calib = _SigmoidCalibration().fit(rf_d_p_calib[:,1], data["y_calib"])
-    #     plat_p_test = convert_prob_2D(plat_calib.predict(rf_d_p_test[:,1]))
-    #     results_dict[f"{data_name}_{method}_prob"] = plat_p_test
-    #     results_dict[f"{data_name}_{method}_fit"] = plat_calib.predict(tvec)
-
-    # # Venn calibrator
-    # method = "Venn"
-    # if method in calib_methods:
-    #     ven_calib = Venn_calib().fit(rf_p_calib, data["y_calib"])
-    #     ven_p_test = ven_calib.predict(rf_p_test)
-    #     results_dict[f"{data_name}_{method}_prob"] = ven_p_test
-    #     results_dict[f"{data_name}_{method}_fit"] = ven_calib.predict(convert_prob_2D(tvec))[:,1]
-
-
-    # method = "true"
-    # if method in calib_methods:
-    #     true_p_test = convert_prob_2D(bc.true_prob_ens(data["x_test"], data["y_test"], data["x_train"], data["y_train"], RF))
-    #     results_dict[f"{data_name}_{method}_prob"] = true_p_test
-
-    # method = "bin"
-    # if method in calib_methods:
-    #     rf_p_train = results_dict[data["name"] + "_RF_prob_train"]
-    #     bc_bin = Bin_calib(params["ece_bins"]).fit(rf_p_train[:,1], data["y_train"], rf_p_calib[:,1], data["y_calib"])
-    #     bin_p_test = convert_prob_2D(bc_bin.predict(rf_p_test[:,1]))
-    #     results_dict[f"{data_name}_{method}_prob"] = bin_p_test
-    
-    # method = "RF_boot"
-    # if method in calib_methods:
-    #     rf_tree_test = RF.predict_proba(data["x_test"], return_tree_prob=True)
-    #     bc_boot = Boot_calib(boot_count=params["boot_count"], bootstrap_size= params["boot_size"])
-    #     bc_p_test = bc_boot.predict_boot(rf_tree_test)
-    #     results_dict[f"{data_name}_{method}_prob"] = bc_p_test
-
-    # method = "RF_ens_boot"
-    # if method in calib_methods:
-    #     bc_ensboot = Boot_calib(boot_count=params["boot_count"], bootstrap_size= params["boot_size"])
-    #     bc_p_test = bc_ensboot.predict_ens_boot(data["x_test"], data["x_train"], data["y_train"], RF)
-    #     results_dict[f"{data_name}_{method}_prob"] = bc_p_test
-
-    # method = "RF_ensbin"
-    # if method in calib_methods:
-    #     rf_tree_test = RF.predict_proba(data["x_test"])
-    #     bc_ensbin = Boot_calib(boot_count=params["boot_count"]).fit(data["x_train"], data["y_train"], RF)
-    #     bc_p_test = convert_prob_2D(bc_ensbin.predict_ens2(rf_p_test[:,1]))
-    #     results_dict[f"{data_name}_{method}_prob"] = bc_p_test
-
-    # method = "RF_ens_p"
-    # if method in calib_methods:
-    #     bc_p_test = bc.predict_ens(data["x_test"], data["x_train"], data["y_train"], RF, param_change=True)
-    #     results_dict[f"{data_name}_{method}_prob"] = bc_p_test
 
     if "time" in metrics:
         for method in calib_methods:

@@ -66,7 +66,9 @@ class IR_RF(RandomForestClassifier):
                     bootstrap=True,
                     oob_score=False,
                     class_weight=None,
-                    curt_v=0, **kwargs
+                    curt_v=0, 
+                    laplace=0,
+                    **kwargs
                 ):
         super().__init__(**kwargs)
         self.n_estimators = n_estimators
@@ -81,17 +83,22 @@ class IR_RF(RandomForestClassifier):
         self.bootstrap = bootstrap
 
         self.curt_v = curt_v
+        self.laplace = laplace
 
 
-    def predict_proba(self, X, laplace=0, return_tree_prob=False, classifier_tree=False): # normal random forest predic_proba with the addition of Laplace
+    def predict_proba(self, X, laplace=-1, return_tree_prob=False, classifier_tree=False): # normal random forest predic_proba with the addition of Laplace
+        if laplace == -1:
+            L = self.laplace
+        else:
+            L = laplace
         prob_matrix  = []
         for estimator in self.estimators_:
             if classifier_tree:
                 tree_output = estimator.predict(X) # only the desision
             elif self.curt_v > 0:
-                tree_output = curtailment(estimator, X, self.curt_v, laplace) # probability
+                tree_output = curtailment(estimator, X, self.curt_v, L) # probability
             else:
-                tree_output = tree_laplace_corr(estimator,X, laplace) # probability
+                tree_output = tree_laplace_corr(estimator,X, L) # probability
             prob_matrix.append(tree_output)
         prob_matrix = np.array(prob_matrix)
         
