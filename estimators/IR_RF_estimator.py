@@ -54,18 +54,34 @@ def convert_prob_2D(prob1D):
 
 class IR_RF(RandomForestClassifier):
 
-    def __init__(self, curt_v=0.0, **kwargs):
+    def __init__(
+                    self,
+                    n_estimators=100,
+                    criterion="gini",
+                    max_depth=None,
+                    min_samples_split=2,
+                    min_samples_leaf=1,
+                    max_features="sqrt",
+                    max_leaf_nodes=None,
+                    bootstrap=True,
+                    oob_score=False,
+                    class_weight=None,
+                    curt_v=0, **kwargs
+                ):
         super().__init__(**kwargs)
-        """
-        Parameters
-        ----------
-        curt_v : int, optional (default=0)
-            The value of the curt_v hyperparameter is for curtailment.
-        
-        **kwargs : other keyword arguments
-            Other keyword arguments accepted by RandomForestClassifier.
-        """
+        self.n_estimators = n_estimators
+        self.criterion = criterion
+        self.max_depth = max_depth
+        self.min_samples_split = min_samples_split
+        self.min_samples_leaf = min_samples_leaf
+        self.max_features = max_features
+        self.max_leaf_nodes = max_leaf_nodes
+        self.class_weight = class_weight
+        self.oob_score = oob_score
+        self.bootstrap = bootstrap
+
         self.curt_v = curt_v
+
 
     def predict_proba(self, X, laplace=0, return_tree_prob=False, classifier_tree=False): # normal random forest predic_proba with the addition of Laplace
         prob_matrix  = []

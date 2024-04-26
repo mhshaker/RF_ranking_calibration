@@ -335,8 +335,19 @@ def calibration(data, params, seed=0):
     method = "CT"
     if method in calib_methods:
         time_rf_ct = time.time()
-        rf_ct = IR_RF(n_estimators=params["search_space"]["n_estimators"][0], random_state=seed, curt_v=params["curt_v"]).fit(data["x_train_calib"], data["y_train_calib"])
-        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_rf_d_s
+        # prepare the grid space
+        ct_params = {
+                    "n_estimators": params["search_space"]["n_estimators"],
+                    "curt_v":  params["curt_v"],
+                    }        
+        rf_ct = IR_RF(random_state=seed)
+        RS_ct = RandomizedSearchCV(rf_ct, ct_params, scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
+        # if params["oob"] == False:
+        #     RS_ct.fit(data["x_train"], data["y_train"])
+        # else:
+        RS_ct.fit(data["x_train_calib"], data["y_train_calib"])
+        rf_ct = RS_ct.best_estimator_
+        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_rf_ct
 
         rf_ct_p_test = rf_ct.predict_proba(data["x_test"], params["laplace"])
         
@@ -346,20 +357,20 @@ def calibration(data, params, seed=0):
 
 
 
-    method = "CT_opt"
+    method = "CT_minleaf"
     if method in calib_methods:
         time_rf_ct = time.time()
 
         rf = IR_RF(random_state=seed)
         ct_param_space = {
-                    "n_estimators": [10],
-                    "min_samples_leaf":  np.arange(1, 200).tolist(),
+                    "n_estimators": params["search_space"]["n_estimators"],
+                    "min_samples_leaf":  params["curt_v"],
                     # "oob_score": [False]
                     }
 
-        RS_ct = RandomizedSearchCV(rf, ct_param_space, scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
-        RS_ct.fit(data["x_train_calib"], data["y_train_calib"])
-        RF_ct = RS_ct.best_estimator_
+        RS_ct_2 = RandomizedSearchCV(rf, ct_param_space, scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
+        RS_ct_2.fit(data["x_train_calib"], data["y_train_calib"])
+        RF_ct = RS_ct_2.best_estimator_
 
         results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_rf_ct
         rfct_p_test = RF_ct.predict_proba(data["x_test"], 0)
