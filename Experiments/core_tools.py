@@ -135,7 +135,7 @@ def res_statistics(tables, metrics, path, colors=None):
             plt.close() 
 
             plt.figure(figsize=(10, 4), dpi=100)
-            plt.title(f"Critical difference diagram of average score ranks ({metric})")
+            # plt.title(f"Critical difference diagram of average score ranks ({metric})")
             if colors != None:    
                 sp.critical_difference_diagram(avg_rank, posthoc_res, color_palette=colors)
             else:
@@ -148,6 +148,39 @@ def res_statistics(tables, metrics, path, colors=None):
             plt.close() 
         else:
             print("The differences between groups are not significant.")
+
+
+def res_statistics_ttest(tables, metrics, path, colors=None, extention="_L"):
+    path += "/statistics_nf"
+
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+    for metric in metrics:
+        # print("metric", metric)
+        df = pd.DataFrame(tables[metric])
+
+        columns_list = df.columns.tolist()
+        for i in range(int(len(columns_list)/2)):
+            method_df = df[[columns_list[i], columns_list[i]+extention]]
+            avg_rank = method_df.loc["Rank"]
+            method_df = method_df.drop(["Mean", "Rank"])
+
+            df_list = [list(method_df[columns_list[i]]), list(method_df[columns_list[i]+extention])]
+                        
+            ttest_res = sp.posthoc_ttest(df_list, p_adjust = 'holm')
+
+            print(f"{metric} {columns_list[i]} {ttest_res.iloc[0, 1]}")
+            if ttest_res.iloc[0, 1] < 0.05:
+                
+                if avg_rank[1] < avg_rank[0]:
+                    print(f"{metric} {columns_list[i]} PPP")
+                else:
+                    print(f"{metric} {columns_list[i]} NNN")
+            else:
+                # print(f"{metric} {columns_list[i]} FFF")
+                pass
+            # print("---------------------------------")
 
 def add_rank_mean(tabels):
     for metric in tabels.keys():

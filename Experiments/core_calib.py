@@ -614,6 +614,7 @@ def mean_and_ranking_table(results_dict, metrics, calib_methods, data_list, save
             txt += "," + method
 
         for data in data_list:
+            data = str(data)
             txt += "\n"+ data
             for method in calib_methods:
                 txt += "," + str(np.array(results_dict[data+ "_" + method + "_"+ metric]).mean())
@@ -628,6 +629,7 @@ def mean_and_ranking_table(results_dict, metrics, calib_methods, data_list, save
                 txt += "," + method + "_std"
 
             for data in data_list:
+                data = str(data)
                 txt += "\n"+ data
                 for method in calib_methods:
                     txt += "," + str(np.array(results_dict[data+ "_" + method + "_"+ metric]).std())
