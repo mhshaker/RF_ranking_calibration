@@ -10,7 +10,7 @@ import numpy as np
 from joblib import Parallel, delayed
 import matplotlib.pyplot as plt
 from sklearn.datasets import make_classification
-
+import random
 
 np.random.seed(0)
 
@@ -71,11 +71,64 @@ def load_data_runs(params, exp_data_name, real_data_path=".", exp_key=""):
                                                                     class1_cov_min = params["class1_cov_min"], 
                                                                     class1_cov_max = params["class1_cov_max"],
                                                                     class2_cov_min = params["class2_cov_min"], 
-                                                                    class2_cov_max = params["class2_cov_max"], 
-                                                                    bais_accuracy=params["bais_accuracy"])
+                                                                    class2_cov_max = params["class2_cov_max"]
+                                                                    )
             # X, y, tp = dp.make_classification_mixture_gaussian_with_true_prob(params["data_size"], 
             #                                                         params["n_features"], 
             #                                                         4)
+        elif params["data_name"] == "synthetic_chat":
+            X, y, tp = dp.c_g_p_chat(params["data_size"], 
+                                        params["n_features"], 
+                                        class1_mean_min = params["class1_mean_min"], 
+                                        class1_mean_max = params["class1_mean_max"],
+                                        class2_mean_min = params["class2_mean_min"], 
+                                        class2_mean_max = params["class2_mean_max"], 
+                                        class1_cov_min = params["class1_cov_min"], 
+                                        class1_cov_max = params["class1_cov_max"],
+                                        class2_cov_min = params["class2_cov_min"], 
+                                        class2_cov_max = params["class2_cov_max"]
+                                        )
+        elif params["data_name"] == "synthetic_gu":
+            X, y, tp = dp.c_gu_p_chat_mixed(params["data_size"], 
+                                        params["n_features"], 
+                                        # class1_mean_min = params["class1_mean_min"], 
+                                        # class1_mean_max = params["class1_mean_max"],
+                                        # class2_mean_min = params["class2_mean_min"], 
+                                        # class2_mean_max = params["class2_mean_max"], 
+                                        # class1_cov_min = params["class1_cov_min"], 
+                                        # class1_cov_max = params["class1_cov_max"],
+                                        # class2_cov_min = params["class2_cov_min"], 
+                                        # class2_cov_max = params["class2_cov_max"]
+                                        )
+        elif params["data_name"] == "synthetic_ge":
+            X, y, tp = dp.c_g_p_chat_mixed_exp_gaussian(params["data_size"], 
+                                        params["n_features"], 
+                                        )
+            
+        elif params["data_name"] == "synthetic_ng":
+            X, y, tp = dp.c_ng_p_chat(
+                n_samples= params["data_size"], 
+                n_features =params["n_features"], 
+                class1_min= params["class1_mean_min"], 
+                class1_max= params["class1_mean_max"], 
+                class2_scale= 1, 
+                seed= params["seed"])
+            
+        elif params["data_name"] == "synthetic_rt":
+            X, y, tp = dp.reg_true_prob(
+                n_samples= params["data_size"], 
+                n_features =params["n_features"], 
+                seed= params["seed"])
+        elif params["data_name"] == "synthetic_td":
+            X, y, tp = dp.c_t_p_chat(n_samples=params["data_size"], n_features=params["n_features"])
+            
+        elif params["data_name"] == "synthetic_mg":
+            X, y, tp = dp.make_classification_mixture_gaussian_with_true_prob(
+                n_samples= params["data_size"], 
+                n_features =params["n_features"], 
+                n_clusters= 4, 
+                same_cov= True, 
+                seed= params["seed"])
 
         elif params["data_name"] == "synthetic2":
             X_temp, _ = make_classification(n_samples=params["data_size"], 
@@ -114,14 +167,22 @@ def load_data_runs(params, exp_data_name, real_data_path=".", exp_key=""):
             plt.close()
 
         if params["split"] == "CV":
+            random.seed(params["seed"])
+            np.random.seed(params["seed"])
             data_folds = cal.CV_split_train_calib_test(exp_data_name, X,y,params["cv_folds"],params["runs"],tp)
         elif params["split"] == "random_split":
+            random.seed(params["seed"])
+            np.random.seed(params["seed"])
             data_folds = cal.split_train_calib_test(exp_data_name, X,y,params["test_split"], params["calib_split"],params["runs"],tp)
     else:
         X, y = dp.load_data(params["data_name"], real_data_path)
         if params["split"] == "CV":
+            random.seed(params["seed"])
+            np.random.seed(params["seed"])
             data_folds = cal.CV_split_train_calib_test(exp_data_name, X,y,params["cv_folds"],params["runs"])
         elif params["split"] == "random_split":
+            random.seed(params["seed"])
+            np.random.seed(params["seed"])
             data_folds = cal.split_train_calib_test(exp_data_name, X,y,params["test_split"], params["calib_split"],params["runs"])
     for data in data_folds:    
         data_runs.append(data)
@@ -129,7 +190,7 @@ def load_data_runs(params, exp_data_name, real_data_path=".", exp_key=""):
     return data_runs
 
 def plot_reliability_diagram(params, exp_data_name, res_runs, data_runs):
-    cal.plot_probs(exp_data_name, res_runs, data_runs, params, "RF", False, True, False) 
+    cal.plot_probs(exp_data_name, res_runs, data_runs, params, "RF", True, True, False) 
     
     if params["data_name"] != "synthetic2":
         tmp = params["data_name"]

@@ -42,6 +42,8 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.naive_bayes import GaussianNB
 import scipy
 from sklearn.metrics import mutual_info_score
+import random
+
 
 tvec = np.linspace(0.01, 0.99, 990)
 
@@ -119,6 +121,7 @@ def CV_split_train_calib_test(name, X, y, folds=10, runs=0, tp=np.full(10,-1)):
 
 
 def calibration(data, params, seed=0):
+    seed = int(seed)
     data_name = data["name"]
     calib_methods = params["calib_methods"] 
     metrics = params["metrics"]
@@ -128,6 +131,8 @@ def calibration(data, params, seed=0):
 
     # train model - hyper opt
     time_rf_opt_calib_s = time.time()
+    random.seed(seed)
+    np.random.seed(seed)
     rf = IR_RF(random_state=seed)
     RS = RandomizedSearchCV(rf, params["search_space"], scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
     if params["oob"] == False:
@@ -162,6 +167,8 @@ def calibration(data, params, seed=0):
     method = "RF_d"
     if method in calib_methods:
         time_rf_d_s = time.time()
+        random.seed(seed)
+        np.random.seed(seed)
         rf_d = IR_RF(n_estimators=params["search_space"]["n_estimators"][0], random_state=seed).fit(data["x_train_calib"], data["y_train_calib"])
         results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_rf_d_s
 
@@ -170,6 +177,35 @@ def calibration(data, params, seed=0):
         if "CL" in metrics:
             results_dict[f"{data_name}_{method}_prob_c"] = rf_d.predict_proba(data["X"], params["laplace"])
 
+
+    method = "RF_opt"
+    if method in calib_methods:
+        time_rf_opt_s = time.time()
+        random.seed(seed)
+        np.random.seed(seed)
+        # train model - hyper opt with x_train_calib
+        RS.fit(data["x_train_calib"], data["y_train_calib"])
+
+        # print(f"len train {len(data['y_train'])} calib {len(data['y_calib'])} test {len(data['y_test'])} train_calib {len(data['y_train_calib'])}")
+        # rf_local_opt = IR_RF(random_state=seed)
+        # RS_lopt = RandomizedSearchCV(rf_local_opt, params["search_space"], scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed).fit(data["x_train"], data["y_train"])
+
+        # if params["oob"] == True:
+        #     RS_lopt.fit(data["x_train"], data["y_train"])
+        # else:
+        #     RS_lopt.fit(data["x_train_calib"], data["y_train_calib"])
+
+
+        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_rf_opt_s
+        RF_opt = RS.best_estimator_
+        rff_p_test = RF_opt.predict_proba(data["x_test"], params["laplace"]) # 
+        # print("test y", data["y_test"])
+        # print("opt model acc", accuracy_score(data["y_test"], np.argmax(rff_p_test,axis=1)))
+
+        results_dict[f"{data_name}_{method}_prob"] = rff_p_test
+        if "CL" in metrics:
+            results_dict[f"{data_name}_{method}_prob_c"] = RF_opt.predict_proba(data["X"], params["laplace"]) #  
+
     method = "RF_large"
     if method in calib_methods:
         time_rfl_s = time.time()
@@ -177,7 +213,8 @@ def calibration(data, params, seed=0):
 
         # best_rf_params = RF.get_params().copy()
         # best_rf_params['n_estimators'] = best_rf_params['n_estimators'] * params["boot_count"]
-
+        random.seed(seed)
+        np.random.seed(seed)
         rf_l = IR_RF(n_estimators=params["search_space"]["n_estimators"][0]* params["boot_count"], random_state=seed).fit(data["x_train_calib"], data["y_train_calib"])
         results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_rfl_s
 
@@ -189,37 +226,25 @@ def calibration(data, params, seed=0):
             # results_dict[f"{data_name}_{method}_prob_c"] = bc.predict_largeRF(data["X"], data["x_train_calib"], data["y_train_calib"], RF)
             results_dict[f"{data_name}_{method}_prob_c"] = rf_l.predict_proba(data["X"], params["laplace"])
 
-    method = "RF_opt"
-    if method in calib_methods:
-        time_rf_opt_s = time.time()
-        # train model - hyper opt with x_train_calib
-        RS.fit(data["x_train_calib"], data["y_train_calib"])
-        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_rf_opt_s
-        RF_opt = RS.best_estimator_
-
-        rff_p_test = RF_opt.predict_proba(data["x_test"]) # params["laplace"]
-        results_dict[f"{data_name}_{method}_prob"] = rff_p_test
-        if "CL" in metrics:
-            results_dict[f"{data_name}_{method}_prob_c"] = RF_opt.predict_proba(data["X"]) # params["laplace"] 
     
 
-    method = "RF_opt_CT"
-    if method in calib_methods:
-        time_rf_ct = time.time()
+    # method = "RF_opt_CT"
+    # if method in calib_methods:
+    #     time_rf_ct = time.time()
 
-        ct_param_space = params["search_space"].copy()
-        ct_param_space["min_samples_leaf"] = params["curt_v"]
+    #     ct_param_space = params["search_space"].copy()
+    #     ct_param_space["min_samples_leaf"] = params["curt_v"]
 
-        rf = IR_RF(random_state=seed)
-        RS_ct_2 = RandomizedSearchCV(rf, ct_param_space, scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
-        RS_ct_2.fit(data["x_train_calib"], data["y_train_calib"])
-        RF_ct = RS_ct_2.best_estimator_
+    #     rf = IR_RF(random_state=seed)
+    #     RS_ct_2 = RandomizedSearchCV(rf, ct_param_space, scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
+    #     RS_ct_2.fit(data["x_train_calib"], data["y_train_calib"])
+    #     RF_ct = RS_ct_2.best_estimator_
 
-        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_rf_ct
-        rfct_p_test = RF_ct.predict_proba(data["x_test"])
-        results_dict[f"{data_name}_{method}_prob"] = rfct_p_test
-        if "CL" in metrics:
-            results_dict[f"{data_name}_{method}_prob_c"] = RF_ct.predict_proba(data["X"]) 
+    #     results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_rf_ct
+    #     rfct_p_test = RF_ct.predict_proba(data["x_test"])
+    #     results_dict[f"{data_name}_{method}_prob"] = rfct_p_test
+    #     if "CL" in metrics:
+    #         results_dict[f"{data_name}_{method}_prob_c"] = RF_ct.predict_proba(data["X"]) 
 
 
 
@@ -309,7 +334,9 @@ def calibration(data, params, seed=0):
         ct_params = {
                     "n_estimators": params["search_space"]["n_estimators"],
                     "curt_v":  params["curt_v"],
-                    }        
+                    }  
+        random.seed(seed)
+        np.random.seed(seed)
         rf_ct = IR_RF(random_state=seed)
         RS_ct = RandomizedSearchCV(rf_ct, ct_params, scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
         # if params["oob"] == False:
@@ -340,8 +367,8 @@ def calibration(data, params, seed=0):
     method = "Rank"
     if method in calib_methods:
         time_rank_s = time.time()
-        x_calib_rank = RF.rank(data["x_calib"], class_to_rank=1, train_rank=True)
-        x_test_rank = RF.rank_refrence(data["x_test"], class_to_rank=1)
+        x_calib_rank = RF.rank(data["x_calib"], class_to_rank=1, train_rank=True, laplace=params["laplace"])
+        x_test_rank = RF.rank_refrence(data["x_test"], class_to_rank=1, laplace=params["laplace"])
 
         iso_rank = IsotonicRegression(out_of_bounds='clip').fit(x_calib_rank, data["y_calib"]) 
         results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_rank_s + time_rf_opt_calib
@@ -365,6 +392,8 @@ def calibration(data, params, seed=0):
                 "min_samples_leaf": np.arange(1, 11).tolist(),
                 "max_features": ['sqrt', 'log2', None],
                 }
+        random.seed(seed)
+        np.random.seed(seed)
         dt = DecisionTreeClassifier(random_state=seed)
         RS_dt = RandomizedSearchCV(dt, search_space_dt, scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
         RS_dt.fit(data["x_train_calib"], data["y_train_calib"])
@@ -387,6 +416,8 @@ def calibration(data, params, seed=0):
                 "max_iter":  [100, 500, 1000],
                 "intercept_scaling": [0.1, 1, 10],
                 }
+        random.seed(seed)
+        np.random.seed(seed)
         lr = LogisticRegression(random_state=seed)
         RS_lr = RandomizedSearchCV(lr, search_space_lr, scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
         RS_lr.fit(data["x_train_calib"], data["y_train_calib"])
@@ -402,6 +433,8 @@ def calibration(data, params, seed=0):
     method = "LR_d"
     if method in calib_methods:
         time_lr_opt_s = time.time()
+        random.seed(seed)
+        np.random.seed(seed)
         lr = LogisticRegression(random_state=seed)
         lr.fit(data["x_train_calib"], data["y_train_calib"])
         results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_lr_opt_s
@@ -430,7 +463,8 @@ def calibration(data, params, seed=0):
                 'tol': [1e-4, 1e-3, 1e-2],
                 'probability': [True]
             }
-
+        random.seed(seed)
+        np.random.seed(seed)
         svm = SVC(random_state=seed)
         RS_svm = RandomizedSearchCV(svm, search_space_svm, scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
         RS_svm.fit(data["x_train_calib"], data["y_train_calib"])
@@ -446,7 +480,8 @@ def calibration(data, params, seed=0):
     method = "SVM_d"
     if method in calib_methods:
         time_svm_opt_s = time.time()
-
+        random.seed(seed)
+        np.random.seed(seed)
         svm = SVC(random_state=seed, probability=True)
         svm.fit(data["x_train_calib"], data["y_train_calib"])
         results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_svm_opt_s
@@ -467,7 +502,8 @@ def calibration(data, params, seed=0):
             'learning_rate': ['constant', 'invscaling', 'adaptive'],
             'max_iter': [200, 300, 500],
         }
-
+        random.seed(seed)
+        np.random.seed(seed)
         nn = MLPClassifier(random_state=seed)
         RS_nn = RandomizedSearchCV(nn, search_space_nn, scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
         RS_nn.fit(data["x_train_calib"], data["y_train_calib"])
@@ -487,6 +523,8 @@ def calibration(data, params, seed=0):
         search_space_gnb = {
             'var_smoothing': [1e-9, 1e-8, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1.0],
         }
+        random.seed(seed)
+        np.random.seed(seed)
         gnb = GaussianNB()
         RS_gnb = RandomizedSearchCV(gnb, search_space_gnb, scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=10, random_state=seed)
         RS_gnb.fit(data["x_train_calib"], data["y_train_calib"])
@@ -530,14 +568,16 @@ def calibration(data, params, seed=0):
         for method in calib_methods:
             results_dict[f"{data_name}_{method}_logloss"] = log_loss(data["y_test"], results_dict[f"{data_name}_{method}_prob"][:,1])
 
-    if "tce" in metrics:
+    if "tce_kl" in metrics:
         for method in calib_methods:
-            # results_dict[f"{data_name}_{method}_tce"] = mean_squared_error(data["tp_test"], results_dict[f"{data_name}_{method}_prob"][:,1]) # mean squared error for TCE
+            # results_dict[f"{data_name}_{method}_tce_kl"] = mean_squared_error(data["tp_test"], results_dict[f"{data_name}_{method}_prob"][:,1]) # mean squared error for TCE_kl
             
             true_prob_ = np.concatenate((data["tp_test"].reshape(-1,1), (1-data["tp_test"]).reshape(-1,1)), axis=1)
             pred_prob_ = np.concatenate((results_dict[f"{data_name}_{method}_prob"][:,1].reshape(-1,1), (1-results_dict[f"{data_name}_{method}_prob"][:,1]).reshape(-1,1)), axis=1)
-            results_dict[f"{data_name}_{method}_tce"] = kl_divergence(true_prob_, pred_prob_)  # TCE is the KL divergence with epsilon to avoid inf problem       
-
+            results_dict[f"{data_name}_{method}_tce_kl"] = kl_divergence(true_prob_, pred_prob_)  # TCE is the KL divergence with epsilon to avoid inf problem       
+    if "tce_mse" in metrics:
+        for method in calib_methods:
+            results_dict[f"{data_name}_{method}_tce_mse"] = mean_squared_error(data["tp_test"], results_dict[f"{data_name}_{method}_prob"][:,1]) # mean squared error for TCE
 
     if "BS" in metrics:
 
@@ -754,7 +794,7 @@ def plot_probs(exp_data_name, probs_runs, data_runs, params, ref_plot_name="RF",
         colors_mean = ['orange', 'blue']
         if "synthetic" in params["data_name"]:
             plt.scatter(all_run_tp, all_run_probs[:,1], marker='.', c=[colors[c] for c in all_run_y.astype(int)]) # Calibrated probs
-            plt.scatter(all_run_tp, all_run_probs_ref[:,1], marker='.', c=[colors[c] for c in all_run_y.astype(int)], alpha=0.1) # faded RF probs
+            # plt.scatter(all_run_tp, all_run_probs_ref[:,1], marker='.', c=[colors[c] for c in all_run_y.astype(int)], alpha=0.1) # faded RF probs
         else:
             prob_true, prob_pred = calibration_curve(all_run_y, all_run_probs[:,1], n_bins=params["ece_bins"], strategy=params["bin_strategy"])
             plt.scatter(prob_true, prob_pred, marker='.', c='darkblue') # Calibrated probs
@@ -832,6 +872,10 @@ def plot_probs(exp_data_name, probs_runs, data_runs, params, ref_plot_name="RF",
             plt.hist(all_run_probs[:,1], bins=50)
             plt.xlabel(f"probability output of {method}")
             plt.savefig(f"{path}/{method}_{exp_data_name}_hist.pdf", format='pdf', transparent=True)
+            plt.close()
+            plt.hist(all_run_tp, bins=50)
+            plt.xlabel(f"probability output of {method}")
+            plt.savefig(f"{path}/{method}_{exp_data_name}_hist_tp.pdf", format='pdf', transparent=True)
             plt.close()
 
 
