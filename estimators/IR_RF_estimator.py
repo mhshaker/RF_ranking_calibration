@@ -46,6 +46,21 @@ def find_nearest_index(array, value):
     idx = (np.abs(array - value)).argmin()
     return idx
 
+def insert_and_find_average_index(arr, value):    
+    # Step 1: Insert the value into the array
+    arr_i = np.append(arr, value)
+    # Step 2: Sort the array
+    sorted_arr = np.sort(arr_i)
+    
+    # Step 3: Find all indices of the inserted value in the sorted array
+    indices = np.where(sorted_arr == value)[0]
+    
+    # Step 4: Calculate the average index
+    average_index = np.mean(indices)
+    
+    return average_index
+
+
 
 def convert_prob_2D(prob1D):
     prob_second_class = np.ones(len(prob1D)) - prob1D
@@ -150,15 +165,19 @@ class IR_RF(RandomForestClassifier):
         probs *= count
 
         ranks = []
-        for prob in probs: # loop through data
+        for prob, c in zip(probs, count): # loop through data
             data_rank = 0
-            for tree_prob, ref_prob in zip(prob, self.refrence_prob): # loop through trees
-                # print("refrence tree prob", ref_prob)
-                # print("refrence tree prob", np.unique(ref_prob))
-                # print("X tree prob", tree_prob)
-                # print("nearest", find_nearest_index(np.unique(ref_prob), tree_prob))
-                # exit()
-                data_rank += find_nearest_index(ref_prob, tree_prob)
+            for tree_prob, ref_prob, cc in zip(prob, self.refrence_prob, c): # loop through trees
+                # print(">>> tree_prob", tree_prob)
+                # print(">>> tree_count", cc)
+                # print(">>> ref_prob\n", ref_prob)
+                # print("rank Eyke", insert_and_find_average_index(ref_prob, tree_prob))
+                # print("---------------------------------")
+
+                # data_rank += find_nearest_index(ref_prob, tree_prob)
+                data_rank += insert_and_find_average_index(ref_prob, tree_prob)
+
+                
             ranks.append(data_rank/self.n_estimators)
         return np.array(ranks)
 
