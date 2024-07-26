@@ -4,14 +4,14 @@
 calib\_methods &            &            &            &            \\
 \midrule
 RF\_d          &  \textbackslash ding\{51\} &  \textbackslash ding\{51\} &  \textbackslash ding\{51\} &            \\
-RF\_opt        &            &  \textbackslash ding\{55\} &            &            \\
+RF\_opt        &            &  \textbackslash ding\{55\} &  \textbackslash ding\{51\} &  \textbackslash ding\{51\} \\
 RF\_large      &            &            &  \textbackslash ding\{51\} &  \textbackslash ding\{51\} \\
-Platt         &            &            &  \textbackslash ding\{51\} &            \\
-ISO           &  \textbackslash ding\{55\} &            &            &            \\
-Beta          &            &  \textbackslash ding\{51\} &  \textbackslash ding\{51\} &            \\
-VA            &  \textbackslash ding\{55\} &            &            &            \\
+Platt         &            &  \textbackslash ding\{51\} &  \textbackslash ding\{51\} &            \\
+ISO           &            &            &  \textbackslash ding\{55\} &            \\
+Beta          &  \textbackslash ding\{51\} &  \textbackslash ding\{51\} &  \textbackslash ding\{51\} &            \\
+VA            &            &            &            &            \\
 CT            &            &            &  \textbackslash ding\{51\} &  \textbackslash ding\{51\} \\
 PPA           &            &            &  \textbackslash ding\{51\} &  \textbackslash ding\{51\} \\
-Rank          &            &            &            &            \\
+Rank          &            &  \textbackslash ding\{51\} &            &  \textbackslash ding\{51\} \\
 \bottomrule
 \end{tabular}
