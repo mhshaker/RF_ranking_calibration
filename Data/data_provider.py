@@ -16,6 +16,7 @@ import math
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.naive_bayes import GaussianNB
 from scipy.stats import multivariate_normal
+import random
 
 def unpickle(file): # for reading the CIFAR dataset
     import pickle
@@ -231,7 +232,358 @@ def get_pre_x(n_features):
 
 	return pre_x[n_features]
 
+import numpy as np
+from scipy.stats import uniform, expon
+import random
+from sklearn.datasets import make_regression
+from scipy.stats import zscore
+from scipy.special import expit
+
+def reg_true_prob(n_samples, n_features, seed=0):
+	# Set random seed
+	np.random.seed(seed)
+	random.seed(seed)
+
+	X, y = make_regression(n_features=n_features, n_samples=n_samples)
+	y_std = zscore(y)
+	true_prob = expit(y_std)
+	y = np.random.binomial(n=1, p=true_prob)
+	return X, y, true_prob
+
+def c_ng_p_chat(n_samples, 
+				n_features, 
+				class1_min=0, 
+				class1_max=1, 
+				class2_scale=1, 
+				seed=0):
+    """
+    Generate synthetic data with true probabilities for binary classification using non-Gaussian distributions.
+
+    Parameters:
+    - n_samples: int, total number of samples.
+    - n_features: int, number of features.
+    - class1_min, class1_max: float, range for the uniform distribution of the first class.
+    - class2_scale: float, scale parameter for the exponential distribution of the second class.
+    - seed: int, random seed for reproducibility.
+
+    Returns:
+    - X: np.ndarray, feature matrix.
+    - y: np.ndarray, labels.
+    - true_prob: np.ndarray, true probabilities for the labels.
+    """
+    # Number of samples per class
+    n_samples_per_class = int(n_samples / 2)
+    
+    # Set random seed
+    np.random.seed(seed)
+    random.seed(seed)
+    
+    # Sample data from the uniform distribution for class 1
+    x1 = np.random.uniform(class1_min, class1_max, (n_samples_per_class, n_features))
+    
+    # Sample data from the exponential distribution for class 2
+    x2 = np.random.exponential(class2_scale, (n_samples_per_class, n_features))
+    
+    # Concatenate the data from both classes
+    X = np.concatenate([x1, x2])
+    
+    # Calculate the true probabilities for class 2
+    prob_class2 = np.prod(expon.pdf(X, scale=class2_scale), axis=1)
+    prob_class1 = np.prod(uniform.pdf(X, loc=class1_min, scale=class1_max-class1_min), axis=1)
+    true_prob = prob_class2 * 0.5 / (0.5 * prob_class1 + 0.5 * prob_class2)
+    
+    # Create labels for the data
+    y = np.concatenate([np.zeros(n_samples_per_class), np.ones(n_samples_per_class)])
+    
+    return X, y, true_prob
+
+
+from scipy.stats import multivariate_normal, multivariate_t
+
+def c_t_p_chat(n_samples, 
+                n_features, 
+                class1_mean_min=0, 
+                class1_mean_max=1, 
+                class1_cov_min=1, 
+                class1_cov_max=2, 
+                class2_mean_min=0, 
+                class2_mean_max=1, 
+                class2_cov_min=1, 
+                class2_cov_max=2, 
+                df=3,  # degrees of freedom for t-distribution
+                seed=0):
+    """
+    Generate synthetic data with true probabilities for binary classification using multivariate t-distributions.
+
+    Parameters:
+    - n_samples: int, total number of samples.
+    - n_features: int, number of features.
+    - class1_mean_min, class1_mean_max: float, range for means of the first class.
+    - class1_cov_min, class1_cov_max: float, range for covariances of the first class.
+    - class2_mean_min, class2_mean_max: float, range for means of the second class.
+    - class2_cov_min, class2_cov_max: float, range for covariances of the second class.
+    - df: int, degrees of freedom for the t-distribution.
+    - seed: int, random seed for reproducibility.
+
+    Returns:
+    - X: np.ndarray, feature matrix.
+    - y: np.ndarray, labels.
+    - true_prob: np.ndarray, true probabilities for the labels.
+    """
+    # Number of samples per class
+    n_samples_per_class = int(n_samples / 2)
+    
+    # Set random seed
+    np.random.seed(seed)
+    random.seed(seed)
+    
+    # Generate random mean and covariance for class 1
+    mean1 = np.random.uniform(class1_mean_min, class1_mean_max, n_features)
+    cov1 = np.zeros((n_features, n_features))
+    np.fill_diagonal(cov1, np.random.uniform(class1_cov_min, class1_cov_max, n_features))
+    
+    # Generate random mean and covariance for class 2
+    mean2 = np.random.uniform(class2_mean_min, class2_mean_max, n_features)
+    cov2 = np.zeros((n_features, n_features))
+    np.fill_diagonal(cov2, np.random.uniform(class2_cov_min, class2_cov_max, n_features))
+    
+    # Sample data from the multivariate t-distributions
+    x1 = multivariate_t.rvs(mean1, cov1, df, n_samples_per_class)
+    x2 = multivariate_t.rvs(mean2, cov2, df, n_samples_per_class)
+    
+    # Concatenate the data from both classes
+    X = np.concatenate([x1, x2])
+    
+    # Calculate the true probabilities for class 2
+    prob_class2 = multivariate_t.pdf(X, mean2, cov2, df)
+    prob_class1 = multivariate_t.pdf(X, mean1, cov1, df)
+    true_prob = prob_class2 * 0.5 / (0.5 * prob_class1 + 0.5 * prob_class2)
+    
+    # Create labels for the data
+    y = np.concatenate([np.zeros(n_samples_per_class), np.ones(n_samples_per_class)])
+    
+    return X, y, true_prob
+
+
+def c_g_p_chat(n_samples, 
+				n_features, 
+				class1_mean_min=0, 
+				class1_mean_max=1, 
+				class1_cov_min=1, 
+				class1_cov_max=2, 
+				class2_mean_min=0, 
+				class2_mean_max=1, 
+				class2_cov_min=1, 
+				class2_cov_max=2, 
+				seed=0):
+    """
+    Generate synthetic data with true probabilities for binary classification using Gaussian distributions.
+
+    Parameters:
+    - n_samples: int, total number of samples.
+    - n_features: int, number of features.
+    - class1_mean_min, class1_mean_max: float, range for means of the first class.
+    - class1_cov_min, class1_cov_max: float, range for covariances of the first class.
+    - class2_mean_min, class2_mean_max: float, range for means of the second class.
+    - class2_cov_min, class2_cov_max: float, range for covariances of the second class.
+    - seed: int, random seed for reproducibility.
+
+    Returns:
+    - X: np.ndarray, feature matrix.
+    - y: np.ndarray, labels.
+    - true_prob: np.ndarray, true probabilities for the labels.
+    """
+    # Number of samples per class
+    n_samples_per_class = int(n_samples / 2)
+    
+    # Set random seed
+    np.random.seed(seed)
+    random.seed(seed)
+    
+    # Generate random mean and covariance for class 1
+    mean1 = np.random.uniform(class1_mean_min, class1_mean_max, n_features)
+    cov1 = np.zeros((n_features, n_features))
+    np.fill_diagonal(cov1, np.random.uniform(class1_cov_min, class1_cov_max, n_features))
+    
+    # Generate random mean and covariance for class 2
+    mean2 = np.random.uniform(class2_mean_min, class2_mean_max, n_features)
+    cov2 = np.zeros((n_features, n_features))
+    np.fill_diagonal(cov2, np.random.uniform(class2_cov_min, class2_cov_max, n_features))
+    
+    # Sample data from the multivariate normal distributions
+    x1 = np.random.multivariate_normal(mean1, cov1, n_samples_per_class)
+    x2 = np.random.multivariate_normal(mean2, cov2, n_samples_per_class)
+    
+    # Concatenate the data from both classes
+    X = np.concatenate([x1, x2])
+    
+    # Calculate the true probabilities for class 2
+    prob_class2 = multivariate_normal.pdf(X, mean2, cov2)
+    prob_class1 = multivariate_normal.pdf(X, mean1, cov1)
+    true_prob = prob_class2 * 0.5 / (0.5 * prob_class1 + 0.5 * prob_class2)
+    
+    # Create labels for the data
+    y = np.concatenate([np.zeros(n_samples_per_class), np.ones(n_samples_per_class)])
+    
+    return X, y, true_prob
+
+import numpy as np
+import random
+from scipy.stats import multivariate_normal
+
+def c_g_p_chat_mixed_exp_gaussian(n_samples, 
+                                  n_features, 
+                                  class1_mean_min=0, 
+                                  class1_mean_max=1, 
+                                  class1_cov_min=1, 
+                                  class1_cov_max=2, 
+                                  class2_scale_min=0, 
+                                  class2_scale_max=2, 
+                                  seed=0):
+    """
+    Generate synthetic data with true probabilities for binary classification using multivariate exponential and normal distributions.
+
+    Parameters:
+    - n_samples: int, total number of samples.
+    - n_features: int, number of features.
+    - class1_mean_min, class1_mean_max: float, range for means of the first class.
+    - class1_cov_min, class1_cov_max: float, range for covariances of the first class.
+    - class2_scale_min, class2_scale_max: float, range for scales of the second class (exponential).
+    - seed: int, random seed for reproducibility.
+
+    Returns:
+    - X: np.ndarray, feature matrix.
+    - y: np.ndarray, labels.
+    - true_prob: np.ndarray, true probabilities for the labels.
+    """
+    # Number of samples per class
+    n_samples_per_class = int(n_samples / 2)
+    
+    # Set random seed
+    np.random.seed(seed)
+    random.seed(seed)
+    
+    # Generate random mean and covariance for class 1 (multivariate normal)
+    mean1 = np.random.uniform(class1_mean_min, class1_mean_max, n_features)
+    cov1 = np.zeros((n_features, n_features))
+    np.fill_diagonal(cov1, np.random.uniform(class1_cov_min, class1_cov_max, n_features))
+    
+    # Generate data for class 1
+    x1 = np.random.multivariate_normal(mean1, cov1, n_samples_per_class)
+    
+    # Generate scales for class 2 (exponential distribution)
+    scales2 = np.random.uniform(class2_scale_min, class2_scale_max, n_features)
+    
+    # Generate data for class 2
+    x2 = np.array([np.random.exponential(scale, n_samples_per_class) for scale in scales2]).T
+    
+    # Concatenate the data from both classes
+    X = np.concatenate([x1, x2])
+    
+    # Calculate the true probabilities for class 2
+    prob_class2 = np.prod([1/scale * np.exp(-X[:, i] / scale) for i, scale in enumerate(scales2)], axis=0)
+    prob_class1 = multivariate_normal.pdf(X, mean1, cov1)
+    true_prob = prob_class2 * 0.5 / (0.5 * prob_class1 + 0.5 * prob_class2)
+    
+    # Create labels for the data
+    y = np.concatenate([np.zeros(n_samples_per_class), np.ones(n_samples_per_class)])
+    
+    return X, y, true_prob
+
+def c_gu_p_chat_mixed(n_samples, 
+                     n_features, 
+                     class1_mean_min=0, 
+                     class1_mean_max=1, 
+                     class1_cov_min=1, 
+                     class1_cov_max=2, 
+                     class2_min=0, 
+                     class2_max=1, 
+                     seed=0):
+    """
+    Generate synthetic data with true probabilities for binary classification using multivariate normal and uniform distributions.
+
+    Parameters:
+    - n_samples: int, total number of samples.
+    - n_features: int, number of features.
+    - class1_mean_min, class1_mean_max: float, range for means of the first class.
+    - class1_cov_min, class1_cov_max: float, range for covariances of the first class.
+    - class2_min, class2_max: float, range for values of the second class.
+    - seed: int, random seed for reproducibility.
+
+    Returns:
+    - X: np.ndarray, feature matrix.
+    - y: np.ndarray, labels.
+    - true_prob: np.ndarray, true probabilities for the labels.
+    """
+    # Number of samples per class
+    n_samples_per_class = int(n_samples / 2)
+    
+    # Set random seed
+    np.random.seed(seed)
+    random.seed(seed)
+    
+    # Generate random mean and covariance for class 1 (multivariate normal)
+    mean1 = np.random.uniform(class1_mean_min, class1_mean_max, n_features)
+    cov1 = np.zeros((n_features, n_features))
+    np.fill_diagonal(cov1, np.random.uniform(class1_cov_min, class1_cov_max, n_features))
+    
+    # Generate data for class 1
+    x1 = np.random.multivariate_normal(mean1, cov1, n_samples_per_class)
+    
+    # Generate data for class 2 (multivariate uniform)
+    x2 = np.random.uniform(class2_min, class2_max, (n_samples_per_class, n_features))
+    
+    # Concatenate the data from both classes
+    X = np.concatenate([x1, x2])
+    
+    # Calculate the true probabilities for class 2
+    prob_class2 = np.prod(1 / (class2_max - class2_min), axis=0)
+    prob_class1 = multivariate_normal.pdf(X, mean1, cov1)
+    true_prob = prob_class2 * 0.5 / (0.5 * prob_class1 + 0.5 * prob_class2)
+    
+    # Create labels for the data
+    y = np.concatenate([np.zeros(n_samples_per_class), np.ones(n_samples_per_class)])
+    
+    return X, y, true_prob
+
+
+
 def make_classification_gaussian_with_true_prob(n_samples, 
+						n_features, 
+						class1_mean_min=0, 
+						class1_mean_max=1, 
+						class1_cov_min=1, 
+						class1_cov_max=2, 
+						class2_mean_min=0, 
+						class2_mean_max=1, 
+						class2_cov_min=1, 
+						class2_cov_max=2, 
+						seed=0,
+						): #0.76 only for #features exp
+	n_samples = int(n_samples / 2)
+	# Synthetic data with n_features dimentions and n_classes classes
+
+	np.random.seed(seed)
+	random.seed(seed)
+
+	mean1 = np.random.uniform(class1_mean_min, class1_mean_max, n_features) #[0, 2, 3, -1, 9]
+	cov1 = np.zeros((n_features,n_features))
+	np.fill_diagonal(cov1, np.random.uniform(class1_cov_min,class1_cov_max,n_features))
+
+	mean2 = np.random.uniform(class2_mean_min, class2_mean_max,n_features) # [-1, 3, 0, 2, 3]
+	cov2 = np.zeros((n_features,n_features))
+	np.fill_diagonal(cov2, np.random.uniform(class2_cov_min,class2_cov_max,n_features))
+
+	x1 = np.random.multivariate_normal(mean1, cov1, n_samples)
+	x2 = np.random.multivariate_normal(mean2, cov2, n_samples)
+
+	X = np.concatenate([x1, x2])
+	true_prob = multivariate_normal.pdf(X, mean2, cov2) * 0.5 / (0.5 * multivariate_normal.pdf(X, mean1, cov1) + 0.5 * multivariate_normal.pdf(X, mean2, cov2))
+	y = np.concatenate([np.zeros(len(x1)), np.ones(len(x2))])
+
+	return X, y, true_prob
+
+def make_classification_gaussian_with_true_prob_control_RF_acc(n_samples, 
 						n_features, 
 						class1_mean_min=0, 
 						class1_mean_max=1, 
@@ -247,7 +599,8 @@ def make_classification_gaussian_with_true_prob(n_samples,
 	# Synthetic data with n_features dimentions and n_classes classes
 
 	np.random.seed(seed)
-	
+	random.seed(seed)
+
 	x_list = np.arange(0, 1, 0.001)
 	x_list = np.round(x_list, decimals=3)
 
@@ -300,7 +653,7 @@ def make_classification_mixture_gaussian_with_true_prob(n_samples,
 						same_cov = True,
 						seed=0,
 						bais_accuracy= 0): #0.76 only for #features exp
-	n_samples = int(n_samples / 2)
+	n_samples = int(n_samples / 2 / n_clusters)
 	# Synthetic data with n_features dimentions and n_classes classes
 
 	np.random.seed(seed)
@@ -364,6 +717,76 @@ def make_classification_mixture_gaussian_with_true_prob(n_samples,
 
 	return X, y, true_prob
 
+# def make_classification_mixture_gaussian_with_true_prob(n_samples, 
+# 						n_features,
+# 						n_clusters, 
+# 						same_cov = True,
+# 						seed=0,
+# 						bais_accuracy= 0): #0.76 only for #features exp
+# 	n_samples = int(n_samples / 2)
+# 	# Synthetic data with n_features dimentions and n_classes classes
+
+# 	np.random.seed(seed)
+	
+# 	means1 = []
+# 	covariances1 = []
+# 	weights1 = []
+
+# 	means2 = []
+# 	covariances2 = []
+# 	weights2 = []
+
+# 	for i in range(n_clusters):
+# 		mean_min_max = np.random.randint(1, 20, size=2)
+# 		cov_min_max = np.random.randint(1, 5, size=2)
+# 		means1.append(np.random.uniform(mean_min_max.min(), mean_min_max.max(), n_features)) # [0, 2, 3, -1, 9]
+# 		cov1 = np.zeros((n_features,n_features))
+# 		np.fill_diagonal(cov1, np.random.uniform(cov_min_max.min(), cov_min_max.max(),n_features))
+# 		covariances1.append(cov1)
+# 		weights1.append(1 / n_clusters)  # Equal weights1 for all components
+
+# 		mean_min_max = np.random.randint(1, 20, size=2)
+# 		cov2_min_max = np.random.randint(1, 5, size=2)
+# 		if same_cov:
+# 			cov2_min_max = cov_min_max
+# 		means2.append(np.random.uniform(mean_min_max.min(), mean_min_max.max(), n_features)) # [0, 2, 3, -1, 9]
+# 		cov2 = np.zeros((n_features,n_features))
+# 		np.fill_diagonal(cov2, np.random.uniform(cov2_min_max.min(), cov2_min_max.max(),n_features))
+# 		covariances2.append(cov2)
+# 		weights2.append(1 / n_clusters)  # Equal weights for all components
+
+# 	data1 = []
+# 	for mean, covariance in zip(means1, covariances1):
+# 		data1.append(np.random.multivariate_normal(mean, covariance, n_samples))
+
+# 	data2 = []
+# 	for mean, covariance in zip(means2, covariances2):
+# 		data2.append(np.random.multivariate_normal(mean, covariance, n_samples))
+
+# 	x1 = np.concatenate(data1, axis=0)
+# 	x2 = np.concatenate(data2, axis=0)
+# 	X = np.concatenate([x1, x2])
+
+# 	# Calculate the PDF of the mixture Gaussian distributions
+# 	mixture_pdf1 = np.zeros(len(X))
+# 	for mean, covariance, weight in zip(means1, covariances1, weights1):
+# 		mixture_pdf1 += multivariate_normal(mean=mean, cov=covariance).pdf(X) * weight 
+
+# 	mixture_pdf2 = np.zeros(len(X))
+# 	for mean, covariance, weight in zip(means2, covariances2, weights2):
+# 		mixture_pdf2 += multivariate_normal(mean=mean, cov=covariance).pdf(X) * weight 
+
+# 	# Calculate the probabilities of each sample belonging to class 1
+# 	prob_class1 = mixture_pdf1 * 0.5  # Class 1 prior probability is 0.5
+# 	prob_class2 = mixture_pdf2 * 0.5  # Class 2 prior probability is 0.5
+
+# 	# Split true probabilities into two parts, one for each class
+# 	true_prob = prob_class2 / (prob_class1 + prob_class2)
+
+# 	y = np.concatenate([np.zeros(len(x1)), np.ones(len(x2))])
+
+# 	return X, y, true_prob
+
 from sklearn.datasets import make_regression
 
 def make_classification_with_true_prob2(n_samples, n_features, n_classes=2, seed=0):
@@ -409,6 +832,7 @@ def make_classification_with_true_prob_logestic(n_samples, n_features, mean_true
 def make_classification_with_true_prob_3(n_samples, n_features, seed=0):
 	# Set random seed for reproducibility
 	np.random.seed(seed)
+	random.seed(seed)
 
 	# Generate synthetic dataset
 	# X, Y = make_classification(n_samples=n_samples, n_features=n_features, random_state=seed)
