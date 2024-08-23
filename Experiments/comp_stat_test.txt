@@ -3,15 +3,15 @@
 {} &        acc &      brier &    logloss &        ece \\
 calib\_methods &            &            &            &            \\
 \midrule
-RF\_d          &  \ding{51} &  \ding{51} &  \ding{51} &            \\
-RF\_opt        &            &  \ding{55} &  \ding{51} &  \ding{51} \\
-RF\_large      &            &            &  \ding{51} &  \ding{51} \\
-Platt         &            &  \ding{51} &  \ding{51} &            \\
-ISO           &            &            &  \ding{55} &            \\
-Beta          &  \ding{51} &  \ding{51} &  \ding{51} &            \\
+RF\_d          &  \textbackslash ding\{51\} &  \textbackslash ding\{51\} &  \textbackslash ding\{51\} &            \\
+RF\_opt        &            &  \textbackslash ding\{55\} &  \textbackslash ding\{51\} &  \textbackslash ding\{51\} \\
+RF\_large      &            &            &  \textbackslash ding\{51\} &  \textbackslash ding\{51\} \\
+Platt         &            &  \textbackslash ding\{51\} &  \textbackslash ding\{51\} &            \\
+ISO           &            &            &  \textbackslash ding\{55\} &            \\
+Beta          &  \textbackslash ding\{51\} &  \textbackslash ding\{51\} &  \textbackslash ding\{51\} &            \\
 VA            &            &            &            &            \\
-CT            &            &            &  \ding{51} &  \ding{51} \\
-PPA           &            &            &  \ding{51} &  \ding{51} \\
-Rank          &            &  \ding{51} &            &  \ding{51} \\
+CT            &            &            &  \textbackslash ding\{51\} &  \textbackslash ding\{51\} \\
+PPA           &            &            &  \textbackslash ding\{51\} &  \textbackslash ding\{51\} \\
+Rank          &            &  \textbackslash ding\{51\} &            &  \textbackslash ding\{51\} \\
 \bottomrule
 \end{tabular}

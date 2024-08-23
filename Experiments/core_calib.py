@@ -12,6 +12,7 @@ np.set_printoptions(edgeitems=30, linewidth=100000,
     formatter=dict(float=lambda x: "%.3g" % x))
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 from sklearn.model_selection import train_test_split
 from estimators.IR_RF_estimator import IR_RF
 from estimators.CRF_estimator import CRF_calib
@@ -578,6 +579,24 @@ def calibration(data, params, seed=0):
     if "tce_mse" in metrics:
         for method in calib_methods:
             results_dict[f"{data_name}_{method}_tce_mse"] = mean_squared_error(data["tp_test"], results_dict[f"{data_name}_{method}_prob"][:,1]) # mean squared error for TCE
+    
+    if "prob_ent" in metrics:
+        for method in calib_methods:
+            results_dict[f"{data_name}_{method}_prob_ent"] = calculate_entropy(results_dict[f"{data_name}_{method}_prob"][:,1]) # mean squared error for TCE
+    if "true_prob_ent" in metrics:
+        for method in calib_methods:
+            results_dict[f"{data_name}_{method}_true_prob_ent"] = calculate_entropy(data["tp_test"]) # mean squared error for TCE
+    if "IL" in metrics:
+        for method in calib_methods:
+            results_dict[f"{data_name}_{method}_IL"] = mean_squared_error(data["tp_test"], data["y_test"])  
+    if "CLGL" in metrics:
+        for method in calib_methods:
+            results_dict[f"{data_name}_{method}_CLGL"] = results_dict[f"{data_name}_{method}_brier"] - results_dict[f"{data_name}_{method}_IL"]
+
+    if "unique_prob" in metrics:
+        for method in calib_methods:
+            results_dict[f"{data_name}_{method}_unique_prob"] = np.array(len(np.unique(results_dict[f"{data_name}_{method}_prob"][:,1]))) # mean squared error for TCE
+            # print(f"{data_name}_{method} unique prob count ", results_dict[f"{data_name}_{method}_unique_prob"])
 
     if "BS" in metrics:
 
@@ -753,7 +772,23 @@ def predict_bin(prob_true, prob_pred, Y):
     calib_prob = np.array(calib_prob)
     return calib_prob
 
-def plot_probs(exp_data_name, probs_runs, data_runs, params, ref_plot_name="RF", hist_plot=False, calib_plot=False, corrct_ece=True):
+def calculate_entropy(arr):
+    # Flatten the array to ensure we are working with a 1D array
+    arr = arr.flatten()
+    
+    # Count the occurrences of each value in the array
+    _, counts = np.unique(arr, return_counts=True)
+    
+    # Normalize the counts to get probabilities
+    probabilities = counts / counts.sum()
+    
+    # Calculate the entropy using the Shannon entropy formula
+    entropy = -np.sum(probabilities * np.log2(probabilities))
+    
+    return entropy
+
+
+def plot_probs(exp_data_name, probs_runs, data_runs, params, ref_plot_name="RF", hist_plot=False, calib_plot=False, corrct_ece=False):
 
     calib_methods = params["calib_methods"]
 
@@ -873,10 +908,90 @@ def plot_probs(exp_data_name, probs_runs, data_runs, params, ref_plot_name="RF",
             plt.xlabel(f"probability output of {method}")
             plt.savefig(f"{path}/{method}_{exp_data_name}_hist.pdf", format='pdf', transparent=True)
             plt.close()
-            plt.hist(all_run_tp, bins=50)
-            plt.xlabel(f"probability output of {method}")
-            plt.savefig(f"{path}/{method}_{exp_data_name}_hist_tp.pdf", format='pdf', transparent=True)
-            plt.close()
+            if "synthetic" in params["data_name"]:
+                plt.hist(all_run_tp, bins=50)
+                plt.xlabel(f"probability output of {method}")
+                plt.savefig(f"{path}/{method}_{exp_data_name}_hist_tp.pdf", format='pdf', transparent=True)
+                plt.close()
+
+
+
+def plot_ece(exp_data_name, probs_runs, data_runs, params, corrct_ece=False):
+
+    path = f"./results/{params['exp_name']}/plots/ECE"
+    if not os.path.exists(path):
+        os.makedirs(path)
+    
+    plt.title(params['exp_name'] + f" {exp_data_name}")
+    plt.plot([0, 1], [0, 1], linestyle='--')
+    
+    fig, ax = plt.subplots(figsize=(12, 6))
+
+    legend_markers = []
+    legend_labels = []
+    # Set limits for x and y axes
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+
+    # Set aspect of the plot to be equal
+    ax.set_aspect('equal')
+
+    calib_methods = params["calib_methods"]
+    num_squares = params["ece_bins"]
+    side_length = 1 / num_squares
+
+    for i in range(num_squares):
+        x = i * side_length
+        y = i * side_length
+        square = patches.Rectangle((x, y), side_length, side_length, edgecolor='black', facecolor='none')
+        ax.add_patch(square)
+
+    # concatinate all runs
+    for method in calib_methods:
+
+        all_run_probs = np.zeros(1)
+        for prob in probs_runs[f"{exp_data_name}_{method}_prob"]:
+            if len(all_run_probs) == 1:
+                all_run_probs = prob
+            else:
+                all_run_probs = np.concatenate((all_run_probs, prob))
+
+        all_run_y = np.zeros(1)
+        for data in data_runs:
+            if len(all_run_y) == 1:
+                all_run_y = data["y_test"]
+            else:
+                all_run_y = np.concatenate((all_run_y, data["y_test"]))        
+
+
+        prob_true, prob_pred = calibration_curve(all_run_y, all_run_probs[:,1], n_bins=params["ece_bins"], strategy=params["bin_strategy"])
+
+        for i in range(num_squares):
+            x = i * side_length
+            y = i * side_length
+
+            i = np.where((prob_pred > x) & (prob_pred <= x+side_length))
+            for b_acc in prob_true[i]:
+                ax.plot([x, x+side_length], [b_acc, b_acc], color=params["calib_method_colors"][method]) # label=plot_label
+
+
+        calib_ece = mean_squared_error(prob_true, prob_pred) # confidance_ECE(all_run_probs, all_run_y, bins=params["ece_bins"])
+        if corrct_ece:
+            probs_runs[f"{exp_data_name}_{method}_ece"] = [calib_ece]
+
+        ent = calculate_entropy(all_run_probs[:,1])
+        plot_label =  f"{method} ECE {calib_ece:0.3f} Entropy {ent:0.3f}"
+        marker = plt.plot([],[], marker='_', markersize=15, color=params["calib_method_colors"][method], linestyle='')[0]
+        legend_markers.append(marker)
+        legend_labels.append(plot_label)
+
+    plt.legend(legend_markers, legend_labels, loc='upper left', bbox_to_anchor=(1, 1))
+
+    # plt.legend()
+    plt.xlabel(f"Bin Confidance")
+    plt.ylabel("Bin Accuracy")
+    plt.savefig(f"{path}/{exp_data_name}_ECE_all.pdf", format='pdf', transparent=True)
+    plt.close()
 
 
 def vialin_plot(results_dict, metrics, calib_methods, data_list):

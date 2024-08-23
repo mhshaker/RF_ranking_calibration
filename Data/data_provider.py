@@ -17,6 +17,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.naive_bayes import GaussianNB
 from scipy.stats import multivariate_normal
 import random
+from scipy.integrate import quad
+
 
 def unpickle(file): # for reading the CIFAR dataset
     import pickle
@@ -569,10 +571,14 @@ def make_classification_gaussian_with_true_prob(n_samples,
 	mean1 = np.random.uniform(class1_mean_min, class1_mean_max, n_features) #[0, 2, 3, -1, 9]
 	cov1 = np.zeros((n_features,n_features))
 	np.fill_diagonal(cov1, np.random.uniform(class1_cov_min,class1_cov_max,n_features))
+	# print("mean1", mean1)
+	# print("cov1", cov1)
 
 	mean2 = np.random.uniform(class2_mean_min, class2_mean_max,n_features) # [-1, 3, 0, 2, 3]
 	cov2 = np.zeros((n_features,n_features))
 	np.fill_diagonal(cov2, np.random.uniform(class2_cov_min,class2_cov_max,n_features))
+	# print("mean2", mean2)
+	# print("cov2", cov2)
 
 	x1 = np.random.multivariate_normal(mean1, cov1, n_samples)
 	x2 = np.random.multivariate_normal(mean2, cov2, n_samples)
@@ -580,8 +586,10 @@ def make_classification_gaussian_with_true_prob(n_samples,
 	X = np.concatenate([x1, x2])
 	true_prob = multivariate_normal.pdf(X, mean2, cov2) * 0.5 / (0.5 * multivariate_normal.pdf(X, mean1, cov1) + 0.5 * multivariate_normal.pdf(X, mean2, cov2))
 	y = np.concatenate([np.zeros(len(x1)), np.ones(len(x2))])
+	
+	overlap_delta = mean2.mean() - mean1.mean() # if cov1 and cov2 are the same
 
-	return X, y, true_prob
+	return X, y, true_prob , overlap_delta
 
 def make_classification_gaussian_with_true_prob_control_RF_acc(n_samples, 
 						n_features, 
