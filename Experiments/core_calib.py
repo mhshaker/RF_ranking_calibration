@@ -585,7 +585,11 @@ def calibration(data, params, seed=0):
             results_dict[f"{data_name}_{method}_prob_ent"] = calculate_entropy(results_dict[f"{data_name}_{method}_prob"][:,1]) # mean squared error for TCE
     if "true_prob_ent" in metrics:
         for method in calib_methods:
-            results_dict[f"{data_name}_{method}_true_prob_ent"] = calculate_entropy(data["tp_test"]) # mean squared error for TCE
+            results_dict[f"{data_name}_{method}_true_prob_ent"] = calculate_entropy(np.array(data["tp_test"])) # mean squared error for TCE
+            # print("test data median", np.median(data["tp_test"]))
+            # print("true ent", results_dict[f"{data_name}_{method}_true_prob_ent"])
+            # print("true ent shape", data["tp_test"].shape)
+            # print("---------------------------------")
     if "IL" in metrics:
         for method in calib_methods:
             results_dict[f"{data_name}_{method}_IL"] = mean_squared_error(data["tp_test"], data["y_test"])  
@@ -897,23 +901,38 @@ def plot_probs(exp_data_name, probs_runs, data_runs, params, ref_plot_name="RF",
 
         plt.title(params['exp_name'] + f" {exp_data_name}")
 
+        exp_index = find_closest_index(params['exp_values'], float(exp_data_name))
+
         if "synthetic" in params["data_name"]:
-            plt.savefig(f"{path}/{exp_data_name}_{method}_s.pdf", format='pdf', transparent=True)
+            plt.savefig(f"{path}/{method}_RLs{exp_index}.pdf", format='pdf', transparent=True)
         else:
-            plt.savefig(f"{path}/{exp_data_name}_{method}.pdf", format='pdf', transparent=True)
+            plt.savefig(f"{path}/{method}_RL_{exp_index}.pdf", format='pdf', transparent=True)
         plt.close()
 
         if hist_plot:
             plt.hist(all_run_probs[:,1], bins=50)
+            plt.xlim(0, 1)
+            plt.ylim(0, len(all_run_probs[:,1]) / 3)
+
             plt.xlabel(f"probability output of {method}")
-            plt.savefig(f"{path}/{method}_{exp_data_name}_hist.pdf", format='pdf', transparent=True)
+            plt.savefig(f"{path}/{method}_hist_{exp_index}.pdf", format='pdf', transparent=True)
             plt.close()
             if "synthetic" in params["data_name"]:
+                plt.xlim(0, 1)
+                plt.ylim(0, len(all_run_probs[:,1]) / 3)
                 plt.hist(all_run_tp, bins=50)
-                plt.xlabel(f"probability output of {method}")
-                plt.savefig(f"{path}/{method}_{exp_data_name}_hist_tp.pdf", format='pdf', transparent=True)
+                plt.xlabel(f"True probability")
+                plt.savefig(f"{path}/TP_hist_{exp_index}.pdf", format='pdf', transparent=True)
                 plt.close()
 
+def find_closest_index(my_list, value):
+    try:
+        index = my_list.index(value)
+        return index
+    except ValueError:
+        # Find the closest value
+        closest_index = min(range(len(my_list)), key=lambda i: abs(my_list[i] - value))
+        return closest_index
 
 
 def plot_ece(exp_data_name, probs_runs, data_runs, params, corrct_ece=False):

@@ -25,10 +25,10 @@ def run_exp(exp_key, exp_values, params):
         params[exp_key] = exp_param
         if exp_key == "n_estimators" or exp_key == "max_depth":
             params["search_space"][exp_key] = [exp_param]
-        if exp_key == "Gaussian Mean Delta":
-            overlap_value = 0.25   
-            params["class2_mean_min"] -= overlap_value #(exp_param/200)
-            params["class2_mean_max"] -= overlap_value #(exp_param/200)
+        # if exp_key == "Gaussian Mean Delta":
+        #     overlap_value = 0.25   
+        #     params["class2_mean_min"] -= overlap_value #(exp_param/200)
+        #     params["class2_mean_max"] -= overlap_value #(exp_param/200)
         # Data
         exp_data_name = str(exp_param) # data_name + "_" + 
         data_list.append(exp_data_name)
@@ -85,6 +85,21 @@ def load_data_runs(params, exp_data_name, real_data_path=".", exp_key=""):
             # X, y, tp = dp.make_classification_mixture_gaussian_with_true_prob(params["data_size"], 
             #                                                         params["n_features"], 
             #                                                         4)
+
+        if params["data_name"] == "synthetic_o":
+            X, y, tp, od = dp.make_classification_gaussian_with_true_prob_overlap(params["data_size"], 
+                                                                    params["n_features"], 
+                                                                    class1_mean_min = params["class1_mean_min"], 
+                                                                    class1_mean_max = params["class1_mean_max"],
+                                                                    class1_cov_min = params["class1_cov_min"], 
+                                                                    class1_cov_max = params["class1_cov_max"],
+                                                                    delta = params["overlap_delta"],
+                                                                    seed = params["seed"] 
+                                                                    )
+            if params["exp_key"] == "Gaussian Mean Delta":
+                # exp_key = od
+                print(f"od {od:0.2f}")
+
         elif params["data_name"] == "synthetic_chat":
             X, y, tp = dp.c_g_p_chat(params["data_size"], 
                                         params["n_features"], 
@@ -166,7 +181,7 @@ def load_data_runs(params, exp_data_name, real_data_path=".", exp_key=""):
             if not os.path.exists(path):
                 os.makedirs(path)
             if params["n_features"] == 2:
-                plt.scatter(X[:,0], X[:,1], marker='.', c=[colors[c] for c in y.astype(int)]) # Calibrated probs
+                plt.scatter(X[:,0], X[:,1], c=[colors[c] for c in y.astype(int)]) # Calibrated probs,  marker='.'
                 red_patch = plt.plot([],[], marker='o', markersize=10, color='red', linestyle='')[0]
                 black_patch = plt.plot([],[], marker='o', markersize=10, color='black', linestyle='')[0]
                 plt.legend((red_patch, black_patch), ('Class 1', 'Class 0'), loc='upper left')
@@ -176,7 +191,7 @@ def load_data_runs(params, exp_data_name, real_data_path=".", exp_key=""):
                 plt.savefig(f"{path}/data_{exp_key}.pdf", format='pdf', transparent=True)
                 plt.close()
             else:
-                visualize_tsne(X, y, path, exp_key)
+                visualize_tsne(X, y, path, od, params)
 
         if params["split"] == "CV":
             random.seed(params["seed"])
@@ -213,7 +228,7 @@ def plot_reliability_diagram(params, exp_data_name, res_runs, data_runs):
 
 
 # Function to visualize high-dimensional data using t-SNE
-def visualize_tsne(X, labels, path, exp_key, perplexity=30, learning_rate=200, n_iter=1000, random_state=0, ):
+def visualize_tsne(X, labels, path, exp_key, params, perplexity=30, learning_rate=200, n_iter=1000, random_state=0, return_image=False):
     """
     Visualizes high-dimensional data using t-SNE.
     
@@ -244,22 +259,15 @@ def visualize_tsne(X, labels, path, exp_key, perplexity=30, learning_rate=200, n
         # If no labels are provided, plot all points in the same color
         plt.scatter(X_tsne[:, 0], X_tsne[:, 1], alpha=0.7)
     
-    plt.title(f"Gaussian Mean Delta {exp_key}")
+    plt.title(f"Gaussian Bhattacharyya distance {exp_key:.2f}")
     plt.xlabel('t-SNE 1')
     plt.ylabel('t-SNE 2')
-    plt.savefig(f"{path}/data_{exp_key}.pdf", format='pdf', transparent=True)
-    plt.close()
+    
+    exp_index = cal.find_closest_index(params['exp_values'], float(exp_key))
 
 
-
-            
-            # if params["n_features"] == 2:
-            #     plt.scatter(X[:,0], X[:,1], marker='.', c=[colors[c] for c in y.astype(int)]) # Calibrated probs
-            #     red_patch = plt.plot([],[], marker='o', markersize=10, color='red', linestyle='')[0]
-            #     black_patch = plt.plot([],[], marker='o', markersize=10, color='black', linestyle='')[0]
-            #     plt.legend((red_patch, black_patch), ('Class 1', 'Class 0'), loc='upper left')
-            #     plt.xlabel("X_0")
-            #     plt.ylabel("X_1")
-
-            #     plt.savefig(f"{path}/data_{exp_key}.pdf", format='pdf', transparent=True)
-            #     plt.close()
+    if return_image == False:
+        plt.savefig(f"{path}/data_{exp_index}.pdf", format='pdf', transparent=True)
+        plt.close()
+    else:
+        return plt

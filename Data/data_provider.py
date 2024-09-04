@@ -591,6 +591,80 @@ def make_classification_gaussian_with_true_prob(n_samples,
 
 	return X, y, true_prob , overlap_delta
 
+
+from scipy.linalg import sqrtm
+
+def bhattacharyya_distance(mean1, cov1, mean2, cov2):
+    """
+    Compute the Bhattacharyya distance between two multivariate Gaussian distributions.
+    
+    :param mean1: Mean vector of the first distribution.
+    :param cov1: Covariance matrix of the first distribution.
+    :param mean2: Mean vector of the second distribution.
+    :param cov2: Covariance matrix of the second distribution.
+    :return: Bhattacharyya distance.
+    """
+    mean_diff = mean2 - mean1
+    
+    # Calculate the average of the covariance matrices
+    cov_mean = (cov1 + cov2) / 2
+    
+    # Calculate the Bhattacharyya distance
+    cov_inv_mean = np.linalg.inv(cov_mean)
+    mean_term = 0.125 * np.dot(np.dot(mean_diff.T, cov_inv_mean), mean_diff)
+    cov_term = 0.5 * np.log(np.linalg.det(cov_mean) / np.sqrt(np.linalg.det(cov1) * np.linalg.det(cov2)))
+    
+    return mean_term + cov_term
+
+
+def make_classification_gaussian_with_true_prob_overlap(n_samples, 
+						n_features, 
+						class1_mean_min=0, 
+						class1_mean_max=1, 
+						class1_cov_min=1, 
+						class1_cov_max=2, 
+						delta = 0.25,
+						seed=0,
+						):
+	n_samples = int(n_samples / 2)
+	# Synthetic data with n_features dimentions and n_classes classes
+
+	np.random.seed(seed)
+	random.seed(seed)
+
+	mean1 = np.random.uniform(class1_mean_min, class1_mean_max, n_features) #[0, 2, 3, -1, 9]
+	cov1 = np.zeros((n_features,n_features))
+	np.fill_diagonal(cov1, np.random.uniform(class1_cov_min,class1_cov_max,n_features))
+	# print("mean1", mean1)
+	# print("cov1", cov1)
+
+	mean2 = mean1 + delta 
+	cov2 = cov1
+	# print("mean2", mean2)
+	# print("cov2", cov2)
+
+	np.random.seed(seed)
+	random.seed(seed)
+
+	x1 = np.random.multivariate_normal(mean1, cov1, n_samples)
+
+	np.random.seed(seed)
+	random.seed(seed)
+
+	x2 = np.random.multivariate_normal(mean2, cov2, n_samples)
+
+	X = np.concatenate([x1, x2])
+	true_prob = multivariate_normal.pdf(X, mean2, cov2) * 0.5 / (0.5 * multivariate_normal.pdf(X, mean1, cov1) + 0.5 * multivariate_normal.pdf(X, mean2, cov2))
+	y = np.concatenate([np.zeros(len(x1)), np.ones(len(x2))])
+	
+	# overlap_delta = mean2.mean() - mean1.mean() # if cov1 and cov2 are the same
+	# print("overlap_delta", overlap_delta)
+
+	overlap_delta = bhattacharyya_distance(mean1, cov1, mean2, cov2)
+
+	return X, y, true_prob , overlap_delta
+
+
 def make_classification_gaussian_with_true_prob_control_RF_acc(n_samples, 
 						n_features, 
 						class1_mean_min=0, 
