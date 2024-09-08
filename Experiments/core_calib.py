@@ -175,6 +175,25 @@ def calibration(data, params, seed=0):
 
         rf_d_p_test = rf_d.predict_proba(data["x_test"], params["laplace"])
         results_dict[f"{data_name}_{method}_prob"] = rf_d_p_test
+
+        # # RF depth ########################################
+        # tree_depths = [estimator.tree_.max_depth for estimator in rf_d.estimators_]
+
+        # # Calculate the average depth
+        # average_depth = np.mean(tree_depths)
+        # results_dict[f"{data_name}_{method}_depth"] = average_depth
+        # # Calculate the variance of the depths
+        # depth_variance = np.var(tree_depths)
+        # results_dict[f"{data_name}_{method}_depth_var"] = depth_variance
+
+        # print("y_test ", data["y_test"].mean())
+        # print("RF_d prob", rf_d_p_test[:,1].mean())
+        # print("score", rf_d.score(data["x_test"], data["y_test"]))
+        # print("acc ", accuracy_score(data["y_test"], np.argmax(results_dict[f"{data_name}_{method}_prob"],axis=1)))
+        # print("predictions\n", rf_d.predict(data["x_test"]))
+        # print("labels\n", data["y_test"])
+        # # RF depth ######################################## end 
+
         if "CL" in metrics:
             results_dict[f"{data_name}_{method}_prob_c"] = rf_d.predict_proba(data["X"], params["laplace"])
 
@@ -203,6 +222,17 @@ def calibration(data, params, seed=0):
         # print("test y", data["y_test"])
         # print("opt model acc", accuracy_score(data["y_test"], np.argmax(rff_p_test,axis=1)))
 
+        # # RF depth ########################################
+        # tree_depths = [estimator.tree_.max_depth for estimator in RF_opt.estimators_]
+
+        # # Calculate the average depth
+        # average_depth = np.mean(tree_depths)
+        # results_dict[f"{data_name}_{method}_depth"] = average_depth
+        # # Calculate the variance of the depths
+        # depth_variance = np.var(tree_depths)
+        # results_dict[f"{data_name}_{method}_depth_var"] = depth_variance
+        # # RF depth ######################################## end 
+
         results_dict[f"{data_name}_{method}_prob"] = rff_p_test
         if "CL" in metrics:
             results_dict[f"{data_name}_{method}_prob_c"] = RF_opt.predict_proba(data["X"], params["laplace"]) #  
@@ -221,6 +251,18 @@ def calibration(data, params, seed=0):
 
         # rf_l = IR_RF(**best_rf_params).fit(data["x_train_calib"], data["y_train_calib"])
         RF_large_p_test_fd = rf_l.predict_proba(data["x_test"], params["laplace"])
+
+        # # RF depth ########################################
+        # tree_depths = [estimator.tree_.max_depth for estimator in rf_l.estimators_]
+
+        # # Calculate the average depth
+        # average_depth = np.mean(tree_depths)
+        # results_dict[f"{data_name}_{method}_depth"] = average_depth
+        # # Calculate the variance of the depths
+        # depth_variance = np.var(tree_depths)
+        # results_dict[f"{data_name}_{method}_depth_var"] = depth_variance
+        # # RF depth ######################################## end 
+
 
         results_dict[f"{data_name}_{method}_prob"] = RF_large_p_test_fd
         if "CL" in metrics:
