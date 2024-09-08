@@ -648,8 +648,8 @@ def make_classification_gaussian_with_true_prob_overlap(n_samples,
 
 	x1 = np.random.multivariate_normal(mean1, cov1, n_samples)
 
-	np.random.seed(seed)
-	random.seed(seed)
+	# np.random.seed(seed)
+	# random.seed(seed)
 
 	x2 = np.random.multivariate_normal(mean2, cov2, n_samples)
 
