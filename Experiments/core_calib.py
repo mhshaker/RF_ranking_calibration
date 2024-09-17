@@ -41,6 +41,10 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC
 from sklearn.neural_network import MLPClassifier
 from sklearn.naive_bayes import GaussianNB
+import xgboost as xgb
+from sklearn.ensemble import BaggingClassifier
+
+
 import scipy
 from sklearn.metrics import mutual_info_score
 import random
@@ -538,7 +542,7 @@ def calibration(data, params, seed=0):
     if method in calib_methods:
         time_nn_opt_s = time.time()
         search_space_nn = {
-            'hidden_layer_sizes': [(50, 50), (100, 100), (100, 50, 25)],
+            'hidden_layer_sizes': [(50, 25), (100, 50), (100, 50, 25), (100, 100, 50), (100, 100, 100, 50)],
             'activation': ['relu', 'tanh'],
             'solver': ['adam', 'sgd'],
             'alpha': [0.0001, 0.001, 0.01],
@@ -580,7 +584,58 @@ def calibration(data, params, seed=0):
         if "CL" in metrics:
             results_dict[f"{data_name}_{method}_prob_c"] = gnb.predict_proba(data["X"])
 
+    method = "XGB"
+    if method in calib_methods:
+        time_xgb_s = time.time()
 
+        search_space_xgb = {
+            'n_estimators': np.arange(100),
+            'max_depth': np.arange(3, 10, 1),
+            'learning_rate': [0.01, 0.05, 0.1, 0.2],
+            'subsample': [0.6, 0.7, 0.8, 0.9, 1.0],
+            'colsample_bytree': [0.6, 0.7, 0.8, 0.9, 1.0],
+            'gamma': [0, 0.1, 0.2, 0.3, 0.4],
+            'min_child_weight': [1, 2, 3, 4, 5]
+        }
+
+        random.seed(seed)
+        np.random.seed(seed)
+
+        # Create the XGBoost classifier
+        xgb_m = xgb.XGBClassifier(eval_metric='logloss')
+        RS_gnb = RandomizedSearchCV(xgb_m, search_space_xgb, scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
+        RS_gnb.fit(data["x_train_calib"], data["y_train_calib"])
+        gnb = RS_gnb.best_estimator_
+        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_xgb_s
+
+        xgb_p_test = gnb.predict_proba(data["x_test"])
+        results_dict[f"{data_name}_{method}_prob"] = xgb_p_test
+
+
+    method = "DNN_ens"
+    if method in calib_methods:
+        time_dnn_s = time.time()
+
+        search_space_nn = {
+            'estimator__hidden_layer_sizes': [(50, 25), (100, 50), (100, 50, 25), (100, 100, 50), (100, 100, 100, 50)],
+            'estimator__activation': ['relu', 'tanh'],
+            'estimator__solver': ['adam', 'sgd'],
+            'estimator__alpha': [0.0001, 0.001, 0.01],
+            'estimator__learning_rate': ['constant', 'invscaling', 'adaptive'],
+            'estimator__max_iter': [200, 300, 500],
+            'estimator__early_stopping': [False, True]
+        }
+        random.seed(seed)
+        np.random.seed(seed)
+        nn = MLPClassifier()
+        bagging_clf = BaggingClassifier(base_estimator=nn, n_estimators=10, random_state=seed)
+        RS_dnn = RandomizedSearchCV(bagging_clf, search_space_nn, scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
+        RS_dnn.fit(data["x_train_calib"], data["y_train_calib"])
+        dnn_ens = RS_dnn.best_estimator_
+        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_dnn_s
+
+        nn_p_test = dnn_ens.predict_proba(data["x_test"])
+        results_dict[f"{data_name}_{method}_prob"] = nn_p_test
 
 
     if "time" in metrics:
