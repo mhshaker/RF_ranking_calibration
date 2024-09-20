@@ -135,35 +135,36 @@ def calibration(data, params, seed=0):
     results_dict = {}
 
     # train model - hyper opt
-    time_rf_opt_calib_s = time.time()
-    random.seed(seed)
-    np.random.seed(seed)
-    rf = IR_RF(random_state=seed)
-    RS = RandomizedSearchCV(rf, params["search_space"], scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
-    if params["oob"] == False:
-        RS.fit(data["x_train"], data["y_train"])
-    else:
-        RS.fit(data["x_train_calib"], data["y_train_calib"])
-    time_rf_opt_calib = time.time() - time_rf_opt_calib_s
+    if any(method in ["Platt", "ISO", "Beta", "VA", "PPA"] for method in calib_methods):
+        time_rf_opt_calib_s = time.time()
+        random.seed(seed)
+        np.random.seed(seed)
+        rf = IR_RF(random_state=seed)
+        RS = RandomizedSearchCV(rf, params["search_space"], scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
+        if params["oob"] == False:
+            RS.fit(data["x_train"], data["y_train"])
+        else:
+            RS.fit(data["x_train_calib"], data["y_train_calib"])
+        time_rf_opt_calib = time.time() - time_rf_opt_calib_s
 
-    # RF = rf_best
-    RF = RS.best_estimator_
+        # RF = rf_best
+        RF = RS.best_estimator_
 
-    # get main random forest calibration probs
-    if params["oob"] == False:
-        rf_p_calib = RF.predict_proba(data["x_calib"], params["laplace"])
-        y_p_calib = data["y_calib"]
-    else:
-        rf_p_calib = RF.oob_decision_function_
-        y_p_calib = data["y_train_calib"]
+        # get main random forest calibration probs
+        if params["oob"] == False:
+            rf_p_calib = RF.predict_proba(data["x_calib"], params["laplace"])
+            y_p_calib = data["y_calib"]
+        else:
+            rf_p_calib = RF.oob_decision_function_
+            y_p_calib = data["y_train_calib"]
 
-    # get test probs from main RF - to later be used as input for calibration methods to predict
-    rf_p_test = RF.predict_proba(data["x_test"], params["laplace"])
+        # get test probs from main RF - to later be used as input for calibration methods to predict
+        rf_p_test = RF.predict_proba(data["x_test"], params["laplace"])
 
-    results_dict[data["name"] + "_RF_prob"] = rf_p_test
-    if "CL" in metrics:
-        results_dict[data["name"] + "_RF_prob_c"] = RF.predict_proba(data["X"], params["laplace"]) # prob c is on all X data
-    # results_dict[data["name"] + "_RF_prob_calib"] = rf_p_calib
+        results_dict[data["name"] + "_RF_prob"] = rf_p_test
+        if "CL" in metrics:
+            results_dict[data["name"] + "_RF_prob_c"] = RF.predict_proba(data["X"], params["laplace"]) # prob c is on all X data
+        # results_dict[data["name"] + "_RF_prob_calib"] = rf_p_calib
 
 
     # all input probs to get the fit calib model
@@ -208,34 +209,13 @@ def calibration(data, params, seed=0):
         random.seed(seed)
         np.random.seed(seed)
         # train model - hyper opt with x_train_calib
-        RS.fit(data["x_train_calib"], data["y_train_calib"])
-
-        # print(f"len train {len(data['y_train'])} calib {len(data['y_calib'])} test {len(data['y_test'])} train_calib {len(data['y_train_calib'])}")
-        # rf_local_opt = IR_RF(random_state=seed)
-        # RS_lopt = RandomizedSearchCV(rf_local_opt, params["search_space"], scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed).fit(data["x_train"], data["y_train"])
-
-        # if params["oob"] == True:
-        #     RS_lopt.fit(data["x_train"], data["y_train"])
-        # else:
-        #     RS_lopt.fit(data["x_train_calib"], data["y_train_calib"])
-
+        rf = IR_RF(random_state=seed)
+        RS_rf_opt = RandomizedSearchCV(rf, params["search_space"], scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
+        RS_rf_opt.fit(data["x_train_calib"], data["y_train_calib"])
 
         results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_rf_opt_s
-        RF_opt = RS.best_estimator_
+        RF_opt = RS_rf_opt.best_estimator_
         rff_p_test = RF_opt.predict_proba(data["x_test"], params["laplace"]) # 
-        # print("test y", data["y_test"])
-        # print("opt model acc", accuracy_score(data["y_test"], np.argmax(rff_p_test,axis=1)))
-
-        # # RF depth ########################################
-        # tree_depths = [estimator.tree_.max_depth for estimator in RF_opt.estimators_]
-
-        # # Calculate the average depth
-        # average_depth = np.mean(tree_depths)
-        # results_dict[f"{data_name}_{method}_depth"] = average_depth
-        # # Calculate the variance of the depths
-        # depth_variance = np.var(tree_depths)
-        # results_dict[f"{data_name}_{method}_depth_var"] = depth_variance
-        # # RF depth ######################################## end 
 
         results_dict[f"{data_name}_{method}_prob"] = rff_p_test
         if "CL" in metrics:
@@ -428,7 +408,7 @@ def calibration(data, params, seed=0):
 
     ### models
 
-    method = "DT"
+    method = "DT_opt"
     if method in calib_methods:
         time_dt_opt_s = time.time()
         search_space_dt = {
@@ -453,7 +433,7 @@ def calibration(data, params, seed=0):
         if "CL" in metrics:
             results_dict[f"{data_name}_{method}_prob_c"] = dt.predict_proba(data["X"])
 
-    method = "LR"
+    method = "LR_opt"
     if method in calib_methods:
         time_lr_opt_s = time.time()
         search_space_lr = {
@@ -493,7 +473,7 @@ def calibration(data, params, seed=0):
             results_dict[f"{data_name}_{method}_prob_c"] = lr.predict_proba(data["X"])
 
 
-    method = "SVM"
+    method = "SVM_opt"
     if method in calib_methods:
         time_svm_opt_s = time.time()
         search_space_svm = {
@@ -538,7 +518,7 @@ def calibration(data, params, seed=0):
         if "CL" in metrics:
             results_dict[f"{data_name}_{method}_prob_c"] = svm.predict_proba(data["X"])
 
-    method = "NN"
+    method = "DNN_opt"
     if method in calib_methods:
         time_nn_opt_s = time.time()
         search_space_nn = {
@@ -548,6 +528,7 @@ def calibration(data, params, seed=0):
             'alpha': [0.0001, 0.001, 0.01],
             'learning_rate': ['constant', 'invscaling', 'adaptive'],
             'max_iter': [200, 300, 500],
+            'early_stopping': [False, True]
         }
         random.seed(seed)
         np.random.seed(seed)
@@ -564,7 +545,7 @@ def calibration(data, params, seed=0):
             results_dict[f"{data_name}_{method}_prob_c"] = nn.predict_proba(data["X"])
 
 
-    method = "GNB"
+    method = "GNB_opt"
     if method in calib_methods:
         time_gnb_opt_s = time.time()
         search_space_gnb = {
@@ -584,6 +565,35 @@ def calibration(data, params, seed=0):
         if "CL" in metrics:
             results_dict[f"{data_name}_{method}_prob_c"] = gnb.predict_proba(data["X"])
 
+
+    method = "XGB_opt"
+    if method in calib_methods:
+        time_xgb_s = time.time()
+
+        search_space_xgb = {
+            'n_estimators': params["search_space"]["n_estimators"],
+            'max_depth': params["search_space"]["max_depth"],
+            'learning_rate': [0.01, 0.05, 0.1, 0.2],
+            'subsample': [0.6, 0.7, 0.8, 0.9, 1.0],
+            'colsample_bytree': [0.6, 0.7, 0.8, 0.9, 1.0],
+            'gamma': [0, 0.1, 0.2, 0.3, 0.4],
+            'min_child_weight': [1, 2, 3, 4, 5]
+        }
+
+        random.seed(seed)
+        np.random.seed(seed)
+
+        # Create the XGBoost classifier
+        xgb_m = xgb.XGBClassifier(eval_metric='logloss')
+        RS_xgb = RandomizedSearchCV(xgb_m, search_space_xgb, scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
+        RS_xgb.fit(data["x_train_calib"], data["y_train_calib"])
+        xgb_m = RS_xgb.best_estimator_
+        results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_xgb_s
+
+        xgb_p_test = xgb_m.predict_proba(data["x_test"])
+        results_dict[f"{data_name}_{method}_prob"] = xgb_p_test
+
+
     method = "XGB"
     if method in calib_methods:
         time_xgb_s = time.time()
@@ -602,10 +612,8 @@ def calibration(data, params, seed=0):
         np.random.seed(seed)
 
         # Create the XGBoost classifier
-        xgb_m = xgb.XGBClassifier(eval_metric='logloss')
-        RS_gnb = RandomizedSearchCV(xgb_m, search_space_xgb, scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
-        RS_gnb.fit(data["x_train_calib"], data["y_train_calib"])
-        gnb = RS_gnb.best_estimator_
+        xgb_m = xgb.XGBClassifier(n_estimators=params["search_space"]["n_estimators"][0])
+        xgb_m.fit(data["x_train_calib"], data["y_train_calib"])
         results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_xgb_s
 
         xgb_p_test = gnb.predict_proba(data["x_test"])
@@ -616,22 +624,11 @@ def calibration(data, params, seed=0):
     if method in calib_methods:
         time_dnn_s = time.time()
 
-        search_space_nn = {
-            'estimator__hidden_layer_sizes': [(50, 25), (100, 50), (100, 50, 25), (100, 100, 50), (100, 100, 100, 50)],
-            'estimator__activation': ['relu', 'tanh'],
-            'estimator__solver': ['adam', 'sgd'],
-            'estimator__alpha': [0.0001, 0.001, 0.01],
-            'estimator__learning_rate': ['constant', 'invscaling', 'adaptive'],
-            'estimator__max_iter': [200, 300, 500],
-            'estimator__early_stopping': [False, True]
-        }
         random.seed(seed)
         np.random.seed(seed)
-        nn = MLPClassifier()
-        bagging_clf = BaggingClassifier(base_estimator=nn, n_estimators=10, random_state=seed)
-        RS_dnn = RandomizedSearchCV(bagging_clf, search_space_nn, scoring=["neg_brier_score"], refit="neg_brier_score", cv=params["opt_cv"], n_iter=params["opt_n_iter"], random_state=seed)
-        RS_dnn.fit(data["x_train_calib"], data["y_train_calib"])
-        dnn_ens = RS_dnn.best_estimator_
+        dnn = MLPClassifier(hidden_layer_sizes=(100, 50, 25))
+        dnn_ens = BaggingClassifier(base_estimator=dnn, n_estimators=10, random_state=seed)
+        dnn_ens.fit(data["x_train_calib"], data["y_train_calib"])
         results_dict[f"{data_name}_{method}_runtime"] = time.time() - time_dnn_s
 
         nn_p_test = dnn_ens.predict_proba(data["x_test"])
