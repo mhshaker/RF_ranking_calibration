@@ -181,6 +181,14 @@ def calibration(data, params, seed=0):
         rf_d_p_test = rf_d.predict_proba(data["x_test"], params["laplace"])
         results_dict[f"{data_name}_{method}_prob"] = rf_d_p_test
 
+
+        # ################################# Laplac BS Log test
+        # np.save(f'L1T/{seed}_prob.npy', rf_d_p_test)
+        # np.save(f'L1T/{seed}_lable.npy', data["y_test"])
+
+
+        # ################################# end
+
         # # RF depth ########################################
         # tree_depths = [estimator.tree_.max_depth for estimator in rf_d.estimators_]
 
