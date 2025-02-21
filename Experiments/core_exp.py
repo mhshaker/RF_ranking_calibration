@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from sklearn.datasets import make_classification
 from sklearn.manifold import TSNE
 import random
+import re
 
 np.random.seed(0)
 
@@ -174,6 +175,11 @@ def load_data_runs(params, exp_data_name, real_data_path=".", exp_key=""):
 
         elif params["data_name"] == "synthetic3":
             X, y, tp = dp.make_classification_with_true_prob_3(params["data_size"], params["n_features"])
+
+        elif "synthetic_fx" in params["data_name"]:
+            data_seed = int(re.search(r'\d+', params["data_name"]).group()) 
+            generator = dp.SyntheticDataGenerator(num_features=params["n_features"], num_classes=2, hidden_layers=[64,32],seed=data_seed)
+            X, y, tp = generator.generate_data(num_samples=params["data_size"], temperature=0.1, mask_ratio=0)
 
         if params["plot_data"]:
             colors = ['black', 'red']

@@ -680,7 +680,7 @@ def calibration(data, params, seed=0):
             results_dict[f"{data_name}_{method}_tce_kl"] = kl_divergence(true_prob_, pred_prob_)  # TCE is the KL divergence with epsilon to avoid inf problem       
     if "tce_mse" in metrics:
         for method in calib_methods:
-            results_dict[f"{data_name}_{method}_tce_mse"] = mean_squared_error(data["tp_test"], results_dict[f"{data_name}_{method}_prob"][:,1]) # mean squared error for TCE
+            results_dict[f"{data_name}_{method}_tce_mse"] = mean_squared_error(data["tp_test"][:,1], results_dict[f"{data_name}_{method}_prob"][:,1]) # mean squared error for TCE
     
     if "prob_ent" in metrics:
         for method in calib_methods:
