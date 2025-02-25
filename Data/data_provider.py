@@ -932,6 +932,49 @@ def make_classification_with_true_prob_3(n_samples, n_features, seed=0):
 	return X, Y, true_probabilities 
 
 
+def make_grid_data(size, x, padding=0.5, max_points=1000000):
+    import numpy as np
+
+    """
+    Generates a grid of points covering the range of the given dataset x with specified size per dimension.
+    For high-dimensional data, it uses random sampling to avoid exponential growth in memory usage.
+
+    Args:
+        size (int): Number of points per dimension.
+        x (numpy.ndarray): Input data.
+        padding (float): Extra range added to each dimension.
+        max_points (int): Maximum number of points to generate for high-dimensional data.
+
+    Returns:
+        numpy.ndarray: Generated grid data.
+    """
+
+    dims = x.shape[1]
+    ranges = []
+
+    # Compute the range for each dimension
+    for i in range(dims):
+        min_i = x[:, i].min() - padding
+        max_i = x[:, i].max() + padding
+        ranges.append((min_i, max_i))
+
+    # Calculate total points if fully expanded
+    total_points = size ** dims
+
+    if total_points <= max_points:
+        # Low-dimensional case: create a full grid using numpy's meshgrid
+        grids = [np.linspace(r[0], r[1], size) for r in ranges]
+        mesh = np.meshgrid(*grids)
+        grid_combinations = np.column_stack([m.flatten() for m in mesh])
+    else:
+        # High-dimensional case: sample points randomly within the range
+        print(f"High-dimensional data detected. Sampling {max_points} points instead of generating {total_points}.")
+        grid_combinations = np.random.rand(max_points, dims)
+        for i in range(dims):
+            grid_combinations[:, i] = grid_combinations[:, i] * (ranges[i][1] - ranges[i][0]) + ranges[i][0]
+
+    return grid_combinations
+
 
 import numpy as np
 import torch
