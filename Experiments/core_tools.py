@@ -246,3 +246,62 @@ def real_data_info(data_list):
 
 # tau, p_value = stats.kendalltau(tce_ranks, brier_ranks)
 # print(f"tau {tau} p_value {p_value}")
+
+from sklearn.decomposition import PCA
+
+
+def visualize_data(X, p, savefig_path="", fig_name="Data", title="", save_fig=True, n_components=2):
+
+    # Define colormap for probabilities
+    cmap = plt.cm.viridis
+
+    # Set the normalization to fixed range [0, 1]
+    norm = plt.Normalize(vmin=0, vmax=1)
+
+    # Handle dimensions higher than 3 with PCA
+    if X.shape[1] > 3:
+        pca = PCA(n_components=min(n_components, X.shape[1]))
+        X_reduced = pca.fit_transform(X)
+        print(f"Data was reduced to {X_reduced.shape[1]} dimensions using PCA.")
+    else:
+        X_reduced = X
+
+    # Plot the data
+    if X_reduced.shape[1] == 3:
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+
+        # Scatter plot
+        sc = ax.scatter(X_reduced[:, 0], X_reduced[:, 1], X_reduced[:, 2], c=p, cmap=cmap, norm=norm, marker='o')
+
+        # Add color bar
+        colorbar = plt.colorbar(sc, ax=ax, shrink=0.5, aspect=10)
+        colorbar.set_label('True Probability of Class 1')
+
+        # Labels and title
+        ax.set_title(f"{fig_name}")
+        ax.set_xlabel("Feature 1")
+        ax.set_ylabel("Feature 2")
+        ax.set_zlabel("Feature 3")
+
+    elif X_reduced.shape[1] == 2:
+        # plt.title(title if title else 'Binary Dataset with Mixture Gaussian Distributions')
+        plt.scatter(X_reduced[:, 0], X_reduced[:, 1], c=p, cmap=cmap, norm=norm, rasterized=True)
+
+        # Add color bar with fixed range
+        cbar = plt.colorbar()
+        cbar.set_label('True Probability of Class 1')
+        plt.xlabel("Feature 1")
+        plt.ylabel("Feature 2")
+    else:
+        print("Cannot visualize data with current settings.")
+        return
+
+    # Save or show the plot
+    if save_fig:
+        if not os.path.exists(savefig_path):
+            os.makedirs(savefig_path)
+        plt.savefig(f"{savefig_path}/{fig_name}.pdf", format='pdf', transparent=True)
+    else:
+        plt.show()
+    plt.close()
